@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import type { OrcaWorkerApi } from 'orca/worker'
 import { createSampler } from './sampler.ts'
-import type { Level } from './health.ts'
+import { clampCritAt, CRIT_AT, type Level } from './health.ts'
 import { buildPrompt, pickAgent } from './explain.ts'
 import type { AgentRow, ExplainInput } from './explain.ts'
 import { nodeDeps } from './deps.ts'
@@ -29,13 +29,13 @@ const APP_CLI = '/Applications/Orca.app/Contents/Resources/bin/orca'
 const AGENTS = ['claude', 'codex', 'grok'] as const
 
 type CleanupAgent = (typeof AGENTS)[number]
-type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent }
+type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent; critAt: number }
 type Session = { terminalId: string; suspects: CleanupSuspect[]; startedAt: number; sentAt: number; agent: AgentState | null; gone: number; quitAt: number | null }
 type View = { state: PillState; count: number }
 type StartResult = ({ ok: true } & View) | { ok: false; reason: string }
 type Workspace = { id: string; name: string; branch: string | null }
 
-const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude' }
+const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude', critAt: CRIT_AT }
 const REST: View = { state: { kind: 'rest' }, count: 0 }
 
 export const seams = { run: nodeDeps.run, sampler: () => createSampler(), startWaitMs: START_WAIT_MS }
@@ -50,7 +50,8 @@ function readPrefs(raw: unknown, base: Prefs): Prefs {
   return {
     record: typeof r.record === 'boolean' ? r.record : base.record,
     focus: typeof r.focus === 'boolean' ? r.focus : base.focus,
-    agent
+    agent,
+    critAt: clampCritAt(r.critAt, base.critAt)
   }
 }
 
@@ -123,6 +124,7 @@ export default function activate(orca: OrcaWorkerApi): void {
     if (synced) return
     prefs = readPrefs(stored, DEFAULT_PREFS)
     sampler.setRecording(prefs.record)
+    sampler.setCritAt(prefs.critAt)
   }, () => undefined)
 
   orca.events.on('agent.status.changed', (payload) => {
@@ -277,6 +279,7 @@ export default function activate(orca: OrcaWorkerApi): void {
     prefs = readPrefs(input, prefs)
     synced = true
     sampler.setRecording(prefs.record)
+    sampler.setCritAt(prefs.critAt)
     try {
       await orca.storage.set('prefs', prefs)
     } catch (error: unknown) {

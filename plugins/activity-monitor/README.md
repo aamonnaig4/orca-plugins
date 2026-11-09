@@ -18,11 +18,11 @@ The strip at the bottom of the panel shows one word on a five-step scale, with a
 - **Healthy**: normal use.
 - **Busy**: CPU averaging 70% or more over 10 seconds. CPU alone never raises an alert.
 - **Strained**: memory pressure, memory over 90%, or swap growing. The strip turns amber.
-- **Critical**: memory pressure with swap growing fast, or memory full. The strip turns red, a toast appears in the panel, a "Critical" badge shows in Orca's status bar, and a **Quit ‹app›** button names the app using the most memory, with its helper processes counted in. If memory stays critical, a desktop notification follows, so it reaches you even when Orca is in the background.
+- **Critical**: memory use at or above the percent in Settings → Health → Critical at (95% by default). The strip turns red, a toast appears in the panel, a "Critical" badge shows in Orca's footer, and a **Quit ‹app›** button names the app using the most memory, with its helper processes counted in. If memory stays at that percent and pressure is critical or swap is growing fast, a desktop notification follows, so it reaches you even when Orca is in the background. Pressure or swap trouble below that percent stays on Strained and does not raise the footer warning.
 - After each toast or notification it stays quiet for 10 minutes.
 - It never offers to quit Orca, its helpers, or system processes. If Orca itself is the biggest user, or several unrelated processes share one name, no Quit button appears.
 
-The badge keeps the worker running while the sidebar is closed, so warnings still fire. It's hidden below Critical. Windows has no pressure or swap reading, so there it goes by memory percent alone.
+The badge keeps the worker running while the sidebar is closed, so warnings still fire. It's hidden until memory reaches the Critical at percent. Windows has no pressure or swap reading, so the footer warning there follows that percent, and the desktop notification follows a few points higher.
 
 ## Clean up
 
@@ -45,7 +45,7 @@ Hogs and leaks need about 5 and 10 minutes of samples. Orca and its helpers, sys
 
 - **Graphs**: style (Smooth or Pixel), line style (Line + fill, Line or Bars, for Smooth graphs), color (Heat, or Theme to recolor everything, including the health strip, from your theme's primary color to its destructive color), gridlines on or off, history (1m, 5m, 15m, 1h, 6h or 24h), time labels (Relative, like "5m ago", or Clock, like "14:05"), record in background (keeps long history filling while the panel is closed), and refresh (a stepper from 100ms to 10s, also in the footer). Pixel draws every graph, bar and the health level blocks as braille dots. Fast refresh uses more CPU.
 - **Cleanup**: open cleanup terminal (switch to the agent's terminal when a cleanup starts), and the cleanup agent (Claude, Codex or Grok).
-- **Health**: the health strip on or off (it still shows at Strained or Critical), and the memory alert on or off. The memory alert only hides the pop-up inside the panel; the macOS notification at Critical still appears.
+- **Health**: the health strip on or off (it still shows at Strained or Critical), the memory alert on or off, and **Critical at**, the memory percent that puts the Critical warning in Orca's footer. It defaults to 95% and can be set from 70% to 99%. The memory alert only hides the pop-up inside the panel; the macOS notification still appears once memory is at that percent and pressure or swap says it is getting worse.
 - **Processes**: default sort (CPU, Memory or Name), and pulse on change, which flashes numbers that jump.
 - **General**: what the panel opens on (Last, All or Processes), text size (Small, Default or Large), and table rows (Compact, Default or Comfortable).
 

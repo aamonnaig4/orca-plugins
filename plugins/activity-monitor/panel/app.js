@@ -16,9 +16,11 @@
   var QUIT_GRACE = 8000
   var NAMES = { all: 'All', cpu: 'CPU', mem: 'Memory', net: 'Network', disk: 'Disk', gpu: 'GPU', energy: 'Energy', procs: 'Processes' }
   var ICONS = { all: 'grid', cpu: 'cpu', mem: 'mem', net: 'net', disk: 'disk', gpu: 'gpu', energy: 'bolt', procs: 'proc' }
-  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'resetprefs']
+  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'crit', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'resetprefs']
 
-  var DEFAULTS = { graph: 'smooth', line: 'fill', color: 'heat', grid: true, rate: 1000, hist: 60, clock: false, record: true, strip: true, alert: true, sort: 'cpu', pulse: true, open: 'last', rows: 'default', text: 'default', focus: true, agent: 'claude' }
+  var DEFAULTS = { graph: 'smooth', line: 'fill', color: 'heat', grid: true, rate: 1000, hist: 60, clock: false, record: true, strip: true, alert: true, critAt: 95, sort: 'cpu', pulse: true, open: 'last', rows: 'default', text: 'default', focus: true, agent: 'claude' }
+  var CRIT_MIN = 70
+  var CRIT_MAX = 99
   var HISTS = [60, 300, 900, 3600, 21600, 86400]
   var LINES = ['fill', 'line', 'bars']
   var AGENTS = ['claude', 'codex', 'grok']
@@ -36,6 +38,7 @@
   var PULSE_KEYS = { cpu: 0.5, mem: 0.02, gpu: 0.5, power: 0.5, threads: 1, ports: 1 }
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')) } catch (e) {}
   prefs.rate = clampRate(prefs.rate)
+  prefs.critAt = clampCrit(prefs.critAt)
   prefs.cols = Cols.clean(prefs.cols)
   if (HEROES.indexOf(prefs.hero) < 0) prefs.hero = 'cpu'
   if (HISTS.indexOf(prefs.hist) < 0) prefs.hist = DEFAULTS.hist
@@ -61,10 +64,14 @@
     var n = Math.round(Number(ms) / RATE_STEP) * RATE_STEP
     return isFinite(n) ? Math.min(RATE_MAX, Math.max(RATE_MIN, n)) : 1000
   }
+  function clampCrit(n) {
+    var v = Math.round(Number(n))
+    return isFinite(v) ? Math.min(CRIT_MAX, Math.max(CRIT_MIN, v)) : DEFAULTS.critAt
+  }
   function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch (e) {} }
   function syncPrefs() {
     if (!api || !api.plugin) return
-    api.plugin.request('prefs.sync', { record: prefs.record, focus: prefs.focus, agent: prefs.agent }).then(null, function () {})
+    api.plugin.request('prefs.sync', { record: prefs.record, focus: prefs.focus, agent: prefs.agent, critAt: prefs.critAt }).then(null, function () {})
   }
   function push(arr, v) { arr.push(v); if (arr.length > HISTORY) arr.shift() }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] }) }
@@ -634,7 +641,8 @@
       ]) +
       grp('Health', [
         row('Health strip', toggle('setstrip', prefs.strip, 'Health strip'), 'Shows anyway when Strained or Critical'),
-        row('Memory alert', toggle('setalert', prefs.alert, 'Memory alert'), 'Pop-up when memory is nearly full')
+        row('Memory alert', toggle('setalert', prefs.alert, 'Memory alert'), 'Pop-up when memory is nearly full'),
+        row('Critical at', critStepper(), 'Footer warning when memory use reaches this')
       ]) +
       grp('Processes', [
         row('Default sort', choice('setsort', prefs.sort, [['cpu', 'CPU'], ['mem', 'Memory'], ['name', 'Name']])),
@@ -848,6 +856,11 @@
     var fast = prefs.rate < RATE_FAST
     return '<div class="stp push' + (fast ? ' fast' : '') + '" title="Refresh every ' + prefs.rate + 'ms' + (fast ? '. Fast refresh uses more CPU.' : '') + '">' +
       '<a data-step="-1" tabindex="0" aria-label="Refresh faster">−</a><b class="num">' + prefs.rate + 'ms</b><a data-step="1" tabindex="0" aria-label="Refresh slower">+</a></div>'
+  }
+
+  function critStepper() {
+    return '<div class="stp" title="Critical warning in the Orca footer at this memory use">' +
+      '<a data-crit="-1" tabindex="0" aria-label="Warn at a lower memory percent">−</a><b class="num">' + prefs.critAt + '%</b><a data-crit="1" tabindex="0" aria-label="Warn at a higher memory percent">+</a></div>'
   }
 
   var CLEANUP_POLL_MS = 3000
@@ -1205,20 +1218,33 @@
   function setRate(ms) {
     prefs.rate = clampRate(ms)
     savePrefs()
-    var box = root.querySelector('.stp')
-    if (box) {
-      box.querySelector('b').textContent = prefs.rate + 'ms'
-      box.classList.toggle('fast', prefs.rate < RATE_FAST)
+    var box = root.querySelector('[data-step]')
+    if (box && box.parentNode) {
+      box.parentNode.querySelector('b').textContent = prefs.rate + 'ms'
+      box.parentNode.classList.toggle('fast', prefs.rate < RATE_FAST)
     }
     clearTimeout(rateTimer)
     rateTimer = setTimeout(schedule, 250)
   }
 
+  var critTimer = null
+  function setCrit(n) {
+    prefs.critAt = clampCrit(n)
+    savePrefs()
+    var box = root.querySelector('[data-crit]')
+    if (box && box.parentNode) box.parentNode.querySelector('b').textContent = prefs.critAt + '%'
+    clearTimeout(critTimer)
+    critTimer = setTimeout(syncPrefs, 250)
+  }
+
   var stepping = null
-  function startStep(dir) {
+  function startNudge(dir, apply) {
     stopStep()
-    setRate(prefs.rate + dir * RATE_STEP)
-    stepping = { delay: setTimeout(function () { stepping.repeat = setInterval(function () { setRate(prefs.rate + dir * RATE_STEP) }, 60) }, 400) }
+    apply(dir)
+    stepping = { delay: setTimeout(function () { stepping.repeat = setInterval(function () { apply(dir) }, 60) }, 400) }
+  }
+  function startStep(dir) {
+    startNudge(dir, function (d) { setRate(prefs.rate + d * RATE_STEP) })
   }
   function stopStep() {
     if (!stepping) return
@@ -1287,6 +1313,7 @@
     var d = a.dataset
     if (d.force) return
     if (d.step) { setRate(prefs.rate + Number(d.step) * RATE_STEP); return }
+    if (d.crit) { setCrit(prefs.critAt + Number(d.crit)); return }
     if ('hquit' in d) { quitCulprit(); return }
     if ('cleanup' in d) { cleanupClick(); return }
     if ('cutoastx' in d) { view.cleanupErr = ''; render(); return }
@@ -1350,7 +1377,7 @@
   root.addEventListener('click', function (ev) {
     var a = ev.target.closest('a')
     if (a && root.contains(a)) {
-      if (!a.dataset.step) act(a)
+      if (!a.dataset.step && !a.dataset.crit) act(a)
       return
     }
     var row = ev.target.closest('tr[data-pid]:not(.ask)')
@@ -1442,6 +1469,8 @@
     if (hb) { startHold(hb); return }
     var head = ev.target.closest('.ptab.cols th[data-col]')
     if (head) { view.drag = { key: head.dataset.col, x: ev.clientX, on: false, before: undefined }; return }
+    var cr = ev.target.closest('[data-crit]')
+    if (cr) { startNudge(Number(cr.dataset.crit), function (d) { setCrit(prefs.critAt + d) }); return }
     var st = ev.target.closest('[data-step]')
     if (st) startStep(Number(st.dataset.step))
   })

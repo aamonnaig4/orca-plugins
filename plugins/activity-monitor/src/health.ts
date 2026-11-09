@@ -35,6 +35,14 @@ const MIN_SPAN = 20_000
 const UP_AFTER_MS = 5_000
 const DOWN_AFTER_MS = 15_000
 export const QUIET = 10 * 60_000
+export const CRIT_AT = 95
+export const CRIT_MIN = 70
+export const CRIT_MAX = 99
+
+export function clampCritAt(n: unknown, fallback = CRIT_AT): number {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return fallback
+  return Math.min(CRIT_MAX, Math.max(CRIT_MIN, Math.round(n)))
+}
 
 export const STEPS = ['Idle', 'Healthy', 'Busy', 'Strained', 'Critical'] as const
 export type Step = 0 | 1 | 2 | 3 | 4
@@ -58,24 +66,25 @@ export function swapRate(ring: Reading[]): number | null {
   return (((last.swap as number) - (first.swap as number)) / span) * 60_000
 }
 
-export function rawLevel(r: Reading, rate: number | null): Level {
+export function rawLevel(r: Reading, rate: number | null, critAt = CRIT_AT): Level {
+  const at = clampCritAt(critAt)
   const mem = r.memory.total ? (r.memory.used / r.memory.total) * 100 : 0
   const growing = rate !== null && rate >= 0.25 * GB
   const fast = rate !== null && rate >= 1 * GB
-  if (r.pressure === 'critical' || (mem >= 95 && fast)) return 'crit'
-  if (r.swap === null && r.pressure === null && mem >= 98) return 'crit'
-  if ((r.pressure === 'warning' || mem >= 95) && growing) return 'risk'
-  if (r.swap === null && r.pressure === null && mem >= 95) return 'risk'
-  if (r.pressure === 'warning' || mem >= 90 || growing) return 'warn'
+  const reached = mem >= at
+  if (reached && (r.pressure === 'critical' || fast)) return 'crit'
+  if (reached && r.swap === null && r.pressure === null && mem >= Math.min(CRIT_MAX, at + 3)) return 'crit'
+  if (reached) return 'risk'
+  if (r.pressure === 'warning' || r.pressure === 'critical' || mem >= 90 || growing) return 'warn'
   return 'ok'
 }
 
-export function causeOf(r: Reading, rate: number | null): string {
+export function causeOf(r: Reading, rate: number | null, critAt = CRIT_AT): string {
+  const at = clampCritAt(critAt)
   const mem = r.memory.total ? (r.memory.used / r.memory.total) * 100 : 0
   const parts: string[] = []
-  if (r.pressure === 'critical' || mem >= 95) parts.push('memory full')
-  else if (mem >= 90) parts.push('memory ' + Math.round(mem) + '%')
-  else if (r.pressure === 'warning') parts.push('memory pressure high')
+  if (mem >= at || mem >= 90) parts.push('memory ' + Math.round(mem) + '%')
+  else if (r.pressure === 'critical' || r.pressure === 'warning') parts.push('memory pressure high')
   if (rate !== null && rate >= 0.1 * GB) parts.push('swap +' + (rate / GB).toFixed(1) + ' GB/min')
   return parts.join(', ') || 'plenty of headroom'
 }
@@ -176,14 +185,19 @@ export function createHealth(clock: () => number = Date.now) {
   let rate: number | null = null
   let culprit: Culprit | null = null
   let alertAt = 0
+  let critAt = CRIT_AT
   const lastAlert: Record<'toast' | 'notify', number> = { toast: -Infinity, notify: -Infinity }
+
+  function setCritAt(n: number): void {
+    critAt = clampCritAt(n, critAt)
+  }
 
   function push(r: Reading): { level: Level; escalated: boolean } {
     ring.push(r)
     while (ring.length > 2 && r.at - ring[0].at > WINDOW) ring.shift()
     rate = swapRate(ring)
     lastRaw = r
-    const raw = rawLevel(r, rate)
+    const raw = rawLevel(r, rate, critAt)
     const before = level
     if (RANK[raw] > RANK[level]) {
       downSince = null
@@ -211,7 +225,7 @@ export function createHealth(clock: () => number = Date.now) {
     const now = level
     const t = clock()
     const out: Alert[] = []
-    const cause = lastRaw ? causeOf(lastRaw, rate) : ''
+    const cause = lastRaw ? causeOf(lastRaw, rate, critAt) : ''
     const who = culprit && !isOrca(culprit.app) ? ' ' + culprit.app + ' is using ' + fmtGb(culprit.mem) + '.' : ''
     const body = cause.charAt(0).toUpperCase() + cause.slice(1) + '.' + who
     if (RANK[now] >= RANK.risk && t - lastAlert.toast >= QUIET) {
@@ -236,7 +250,7 @@ export function createHealth(clock: () => number = Date.now) {
     const recent = r ? ring.filter((x) => r.at - x.at <= CPU_WINDOW) : []
     const cpu = recent.length ? recent.reduce((sum, x) => sum + x.total, 0) / recent.length : 0
     const step = stepOf(level, cpu, memPct)
-    const raw = r ? causeOf(r, rate) : ''
+    const raw = r ? causeOf(r, rate, critAt) : ''
     return {
       level,
       step,
@@ -250,5 +264,5 @@ export function createHealth(clock: () => number = Date.now) {
     }
   }
 
-  return { push, alerts, setCulprit, snapshot, level: () => level }
+  return { push, alerts, setCulprit, setCritAt, snapshot, level: () => level }
 }

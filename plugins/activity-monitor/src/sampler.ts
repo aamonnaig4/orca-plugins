@@ -318,6 +318,10 @@ export function createSampler(options: SamplerOptions = {}) {
     recording = on
   }
 
+  function setCritAt(n: number): void {
+    health.setCritAt(n)
+  }
+
   function onAlert(sink: (alert: Alert) => void): void {
     alertSink = sink
   }
@@ -334,5 +338,5 @@ export function createSampler(options: SamplerOptions = {}) {
     return provider.quit(pid, force)
   }
 
-  return { read, quit, pulse, setRecording, suspects, onAlert, listProcs, inspect, guard, health: () => health.snapshot() }
+  return { read, quit, pulse, setRecording, setCritAt, suspects, onAlert, listProcs, inspect, guard, health: () => health.snapshot() }
 }
