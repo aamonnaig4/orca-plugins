@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "id": "activity-monitor",
   "name": "Activity Monitor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "execution": "trusted-worker",
   "description": "Live CPU cores, memory, network, disk, GPU and processes in Orca's sidebar, with a health strip that warns before your computer locks up.",
   "license": "MIT",

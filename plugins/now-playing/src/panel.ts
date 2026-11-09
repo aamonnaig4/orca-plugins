@@ -2,6 +2,7 @@ import { PANEL_CSS } from './panel-css'
 import type { App, AuthStart, Command, CommandResult, Device, LibraryView, ListView, Setup, NowPlaying, PlayerView, QueueView, Row, SearchView } from './protocol'
 import { clock } from './spotify'
 import { waitText } from './client'
+import { createImageCache } from './image-cache'
 
 const ICONS: Record<string, string> = {
   play: '<polygon points="7 4 20 12 7 20 7 4" fill="black"/>',
@@ -91,7 +92,7 @@ function rowArt(row: Row): HTMLElement {
   return box
 }
 
-const imageCache = new Map<string, string>()
+const imageCache = createImageCache()
 const imageFailed = new Set<string>()
 const imageInFlight = new Set<string>()
 const imageWaiters = new Map<string, HTMLElement[]>()

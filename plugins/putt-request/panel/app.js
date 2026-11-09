@@ -15,6 +15,8 @@
   }
   const app = document.getElementById('app')
   const state = { save: Save.newSave(), palette: null, game: null, view: 'library' }
+  let frame = null
+  let last = null
 
   function icon(name) {
     return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>'
@@ -42,6 +44,9 @@
     })
   }
   function leave() {
+    if (frame !== null) root.cancelAnimationFrame(frame)
+    frame = null
+    last = null
     state.game = null
   }
   function thumb(courseIndex, hole) {
@@ -130,6 +135,7 @@
   }
 
   function startGame(hole, course, where, scoreHtml, events) {
+    leave()
     app.innerHTML = '<div class="top"><button class="iconbutton" data-action="' + events.back + '"' + (events.backCourse !== undefined ? ' data-course="' + events.backCourse + '"' : '') + ' aria-label="Back">' + icon('left') + '</button><span class="where">' + where + '</span><span class="strokes push">' + strokesText(hole, 0) + '</span></div><div class="stage"><canvas class="field" aria-label="Golf hole. Drag back and release to putt."></canvas></div>' + footer(scoreHtml)
     const canvas = app.querySelector('canvas.field')
     const game = { canvas, context: canvas.getContext('2d'), source: hole, course, palette: null, hole: null, aspect: null, ball: null, aim: null, strokes: 0, sinkTime: null, message: '', scored: false, events, leftover: 0, background: null }
@@ -140,9 +146,13 @@
       canvas.setPointerCapture(event.pointerId)
       const point = toCourse(game, event)
       game.aim = { start: point, current: point }
+      requestFrame()
     })
     canvas.addEventListener('pointermove', (event) => {
-      if (game.aim) game.aim.current = toCourse(game, event)
+      if (game.aim) {
+        game.aim.current = toCourse(game, event)
+        requestFrame()
+      }
     })
     canvas.addEventListener('pointerup', () => {
       if (!game.aim) return
@@ -153,9 +163,11 @@
         game.strokes += 1
         app.querySelector('.strokes').textContent = strokesText(game.hole, game.strokes)
       }
+      requestFrame()
     })
     canvas.addEventListener('pointercancel', () => {
       game.aim = null
+      requestFrame()
     })
   }
   function strokesText(hole, strokes) {
@@ -255,17 +267,23 @@
     else if (action === 'play') playCourseHole(Number(target.dataset.course), Number(target.dataset.holeIndex))
   })
 
-  let last = performance.now()
+  function requestFrame() {
+    if (frame !== null) return
+    if (last === null) last = performance.now()
+    frame = root.requestAnimationFrame(loop)
+  }
   function loop(now) {
+    frame = null
     const game = state.game
     const elapsed = Math.min(0.05, (now - last) / 1000)
     last = now
     if (game) {
-      game.leftover += elapsed
-      while (game.leftover >= Engine.STEP) {
+      if (game.ball.moving) game.leftover += elapsed
+      while (game.ball.moving && game.leftover >= Engine.STEP) {
         Engine.stepBall(game.ball, game.hole)
         game.leftover -= Engine.STEP
       }
+      if (!game.ball.moving) game.leftover = 0
       if (game.ball.sunk && game.sinkTime === null) game.sinkTime = 0
       if (game.sinkTime !== null) {
         if (!game.scored) {
@@ -277,7 +295,8 @@
       }
       if (state.game === game) drawGame()
     }
-    root.requestAnimationFrame(loop)
+    if (state.game === game && game && (game.ball.moving || game.sinkTime !== null)) requestFrame()
+    else last = null
   }
 
   function repaintForTheme() {
@@ -300,7 +319,6 @@
     }
     showLibrary()
     orca.on('theme', () => setTimeout(repaintForTheme, 0))
-    root.requestAnimationFrame(loop)
   }
   void start()
 })(globalThis)

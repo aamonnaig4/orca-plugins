@@ -59,6 +59,41 @@
       ],
       "releases": [
         {
+          "version": "1.1.1",
+          "commit": "a14e7e4ac4ebfdd29eb935a7e6b506e8be0a4609",
+          "contentHash": "ec6a3114266cd568a151e2221d284795e4906067c971e5397282ab5f0d8370f8",
+          "execution": "sandboxed-ui",
+          "minimumOrca": "1.4.246",
+          "name": "Putt Request",
+          "contributes": [
+            {
+              "kind": "panels",
+              "name": "Putt Request"
+            }
+          ],
+          "capabilities": [
+            "storage:own"
+          ],
+          "images": {
+            "cover": {
+              "path": "plugins/putt-request/media/cover.png",
+              "alt": "The title Putt Request above three pixel-art mini golf holes on a dark starfield",
+              "sha256": "f20d2406960bc2bff59558b1da7ec233de43a3d96dea85a0171049ecc00486de",
+              "width": 1600,
+              "height": 1000
+            },
+            "screenshots": [
+              {
+                "path": "plugins/putt-request/media/screens.png",
+                "alt": "Three screens: the game library, a putt being lined up on the hole Off By One, and the private leaderboard",
+                "sha256": "e4fb3b3af499c44414c7f04a18b90bbd43efb152f7a5e2b6fbc9849babd24e99",
+                "width": 1600,
+                "height": 1000
+              }
+            ]
+          }
+        },
+        {
           "version": "1.1.0",
           "commit": "507a6ebae54510c5d7583823941c36728e520d6f",
           "contentHash": "13eec85770d8e84463355f101c5e6dd77b61092177b8e1be475e81a3957e2dd0",
@@ -144,6 +179,55 @@
       ],
       "releases": [
         {
+          "version": "1.1.1",
+          "commit": "a14e7e4ac4ebfdd29eb935a7e6b506e8be0a4609",
+          "contentHash": "f3787514415d4137fed001b2bd5c6eba1e4737d1567cb1d3c5310a8f60d37da3",
+          "execution": "trusted-worker",
+          "minimumOrca": "1.4.248",
+          "name": "Activity Monitor",
+          "contributes": [
+            {
+              "kind": "panels",
+              "name": "Activity Monitor"
+            },
+            {
+              "kind": "events",
+              "name": "agent.status.changed"
+            },
+            {
+              "kind": "statusBarItems",
+              "name": "Critical"
+            }
+          ],
+          "capabilities": [
+            "notifications:show",
+            "agent:read",
+            "terminal:send",
+            "workspace:read",
+            "agent:launch",
+            "terminal:read",
+            "storage:own"
+          ],
+          "images": {
+            "cover": {
+              "path": "plugins/activity-monitor/media/cover.png",
+              "alt": "Activity Monitor with live CPU, memory, network, disk and GPU graphs, and a red Critical strip offering to quit Google Chrome",
+              "sha256": "569c3b2f606f0c737c1379ba3e6752552a0917ea3a79c51cda48be52917c1a78",
+              "width": 1600,
+              "height": 1000
+            },
+            "screenshots": [
+              {
+                "path": "plugins/activity-monitor/media/screens.png",
+                "alt": "The All tab with a large CPU chart and tiles, the CPU tab with a graph per core, and the Processes tab sorted by CPU",
+                "sha256": "9d43f6aa4df3377379e1480d4a62b4b4bec650b433285e621da18a1c5ee47df5",
+                "width": 1600,
+                "height": 1000
+              }
+            ]
+          }
+        },
+        {
           "version": "1.0.0",
           "commit": "eda1b2c12e23c796654f82f5b9d6ff6ba15af4ad",
           "contentHash": "376839067d6b90578025765378b5ad6ce1c93493452836a0fd37737af4d81821",
@@ -199,6 +283,43 @@
         "utilities"
       ],
       "releases": [
+        {
+          "version": "1.4.1",
+          "commit": "a14e7e4ac4ebfdd29eb935a7e6b506e8be0a4609",
+          "contentHash": "b3f8910bf8699346edb5210de2c0a30c3497041577c3f220e8f29912b38031c8",
+          "execution": "trusted-worker",
+          "minimumOrca": "1.4.248",
+          "name": "Now Playing",
+          "contributes": [
+            {
+              "kind": "panels",
+              "name": "Now Playing"
+            }
+          ],
+          "capabilities": [
+            "storage:own",
+            "settings:own",
+            "secrets:own"
+          ],
+          "images": {
+            "cover": {
+              "path": "plugins/now-playing/media/cover.png",
+              "alt": "Now Playing in Orca's sidebar: a song with its cover art, the device menu open with volume, and the Library with Liked Songs, DJ and daylist",
+              "sha256": "57c9592f8ee0e027e365601266c1dbff415e5a7b3ab5f47dd1b473d8ba9bcc06",
+              "width": 1600,
+              "height": 1000
+            },
+            "screenshots": [
+              {
+                "path": "plugins/now-playing/media/screens.png",
+                "alt": "Three panels: the Library with Made for you and playlists, search results for lantern, and the Queue",
+                "sha256": "cd8876d54776810169be1a087b24c80af3b1b567add13d101caac591a49fd238",
+                "width": 1600,
+                "height": 1000
+              }
+            ]
+          }
+        },
         {
           "version": "1.4.0",
           "commit": "ff143e7f60d9a3e62d4d3c2ecdbaf94fb31fd01c",

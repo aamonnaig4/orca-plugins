@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "id": "now-playing",
   "name": "Now Playing",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "execution": "trusted-worker",
   "description": "Control Spotify or Apple Music from Orca: now playing, controls, your albums and library, search, queue and devices, in the sidebar. On a Mac it works with no setup; connecting Spotify adds your library, Albums and Queue.",
   "license": "MIT",
