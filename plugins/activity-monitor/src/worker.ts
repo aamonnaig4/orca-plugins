@@ -33,7 +33,7 @@ type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent }
 type Session = { terminalId: string; suspects: CleanupSuspect[]; startedAt: number; sentAt: number; agent: AgentState | null; gone: number; quitAt: number | null }
 type View = { state: PillState; count: number }
 type StartResult = ({ ok: true } & View) | { ok: false; reason: string }
-type Workspace = { id: string; name: string; branch: string | null }
+type Workspace = { id: string; name: string; path: string; branch: string | null; hostId: string | null }
 
 const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude' }
 const REST: View = { state: { kind: 'rest' }, count: 0 }
@@ -152,13 +152,17 @@ export default function activate(orca: OrcaWorkerApi): void {
     })
   }
 
-  async function focusedWorkspace(): Promise<string | null> {
-    const context = (await call('workspace.readContext', {})) as { branch?: string; displayName?: string } | null
-    if (!context || !context.displayName) return null
+  async function cleanupWorkspace(): Promise<string | null> {
     const listed = (await call('workspace.list', {})) as { workspaces?: Workspace[] } | null
-    const named = (listed?.workspaces ?? []).filter((w) => w.name === context.displayName)
-    const picks = named.length > 1 ? named.filter((w) => branchOf(w.branch) === branchOf(context.branch)) : named
-    return picks.length === 1 ? picks[0].id : null
+    const all = listed?.workspaces ?? []
+    const context = (await call('workspace.readContext', {})) as { branch?: string; displayName?: string } | null
+    if (context?.displayName) {
+      const named = all.filter((w) => w.name === context.displayName)
+      const picks = named.length > 1 ? named.filter((w) => branchOf(w.branch) === branchOf(context.branch)) : named
+      if (picks.length === 1) return picks[0].id
+    }
+    const local = all.find((w) => (w.hostId === null || w.hostId === 'local') && typeof w.path === 'string' && existsSync(w.path))
+    return local ? local.id : null
   }
 
   async function collectSuspects(excludePids: number[]): Promise<CleanupSuspect[]> {
@@ -220,8 +224,8 @@ export default function activate(orca: OrcaWorkerApi): void {
         return { ok: true, ...current }
       }
     }
-    const workspaceId = await focusedWorkspace()
-    if (!workspaceId) return { ok: false, reason: 'Open a workspace first' }
+    const workspaceId = await cleanupWorkspace()
+    if (!workspaceId) return { ok: false, reason: 'Add a project to Orca first' }
     const suspects = await collectSuspects([])
     const prompt = buildCleanupPrompt(suspects, process.platform)
     let terminalId: string
