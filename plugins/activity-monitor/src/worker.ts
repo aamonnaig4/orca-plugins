@@ -152,17 +152,21 @@ export default function activate(orca: OrcaWorkerApi): void {
     })
   }
 
-  async function cleanupWorkspace(): Promise<string | null> {
-    const listed = (await call('workspace.list', {})) as { workspaces?: Workspace[] } | null
-    const all = listed?.workspaces ?? []
-    const context = (await call('workspace.readContext', {})) as { branch?: string; displayName?: string } | null
+  async function cleanupWorkspace(): Promise<{ id: string } | { reason: string }> {
+    const [listed, context] = (await Promise.all([call('workspace.list', {}), call('workspace.readContext', {})])) as [
+      { workspaces?: Workspace[] } | null,
+      { branch?: string; displayName?: string } | null
+    ]
+    if (!listed || !Array.isArray(listed.workspaces)) return { reason: 'Could not read your Orca workspaces' }
+    const local = listed.workspaces.filter((w) => w.hostId == null || w.hostId === 'local')
     if (context?.displayName) {
-      const named = all.filter((w) => w.name === context.displayName)
+      const named = local.filter((w) => w.name === context.displayName)
       const picks = named.length > 1 ? named.filter((w) => branchOf(w.branch) === branchOf(context.branch)) : named
-      if (picks.length === 1) return picks[0].id
+      if (picks.length === 1) return { id: picks[0].id }
     }
-    const local = all.find((w) => (w.hostId === null || w.hostId === 'local') && typeof w.path === 'string' && existsSync(w.path))
-    return local ? local.id : null
+    const usable = local.find((w) => typeof w.path === 'string' && existsSync(w.path))
+    if (usable) return { id: usable.id }
+    return { reason: listed.workspaces.length ? 'No Orca workspace on this computer' : 'Add a project to Orca first' }
   }
 
   async function collectSuspects(excludePids: number[]): Promise<CleanupSuspect[]> {
@@ -224,8 +228,9 @@ export default function activate(orca: OrcaWorkerApi): void {
         return { ok: true, ...current }
       }
     }
-    const workspaceId = await cleanupWorkspace()
-    if (!workspaceId) return { ok: false, reason: 'Add a project to Orca first' }
+    const target = await cleanupWorkspace()
+    if ('reason' in target) return { ok: false, reason: target.reason }
+    const workspaceId = target.id
     const suspects = await collectSuspects([])
     const prompt = buildCleanupPrompt(suspects, process.platform)
     let terminalId: string

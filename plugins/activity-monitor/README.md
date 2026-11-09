@@ -56,7 +56,7 @@ It runs as a trusted worker because it reads system counters and lists processes
 - **Show notifications** (`notifications:show`): sends the desktop notification when memory stays critical, so it reaches you when Orca is in the background.
 - **Read agents** (`agent:read`): lists your running agents so **What is this?** can pick one to ask, and so a cleanup can tell when its agent is working or waiting for you.
 - **Send to terminals** (`terminal:send`): types the **What is this?** question, or the cleanup request, into the agent's terminal. It only does this when you choose it.
-- **Read your workspace** (`workspace:read`): finds the workspace you have focused, so the cleanup agent starts there, or a local one when nothing is focused.
+- **Read your workspace** (`workspace:read`): finds the workspace you have focused, so the cleanup agent starts there, or another workspace on this computer when nothing local is focused.
 - **Start agents** (`agent:launch`): starts the cleanup agent you picked in Settings when you click the broom.
 - **Read terminal output** (`terminal:read`): reads the cleanup agent's terminal to see its "Proposed: N" line and whether that terminal is still open.
 - **Own storage** (`storage:own`): saves your settings in the plugin's own storage folder.
