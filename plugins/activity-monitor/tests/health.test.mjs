@@ -25,18 +25,23 @@ test('memory pressure warning alone is strained', () => {
   assert.equal(rawLevel(reading(0, 70, 1, 'warning'), 0), 'warn')
 })
 
-test('pressure warning with growing swap is lock-up risk', () => {
-  assert.equal(rawLevel(reading(0, 92, 4, 'warning'), 0.4 * GB), 'risk')
+test('pressure or swap trouble below the critical percent stays strained', () => {
+  assert.equal(rawLevel(reading(0, 92, 4, 'warning'), 0.4 * GB), 'warn')
+  assert.equal(rawLevel(reading(0, 80, 2, 'critical'), 0), 'warn')
+  assert.equal(causeOf(reading(0, 80, 2, 'critical'), 0), 'memory pressure high')
 })
 
-test('kernel critical pressure is critical', () => {
-  assert.equal(rawLevel(reading(0, 80, 2, 'critical'), 0), 'crit')
+test('critical starts at the memory percent, 95 by default', () => {
+  assert.equal(rawLevel(reading(0, 94, 2, 'critical'), 1.2 * GB), 'warn')
+  assert.equal(rawLevel(reading(0, 95, 2, 'normal'), 0), 'risk')
+  assert.equal(rawLevel(reading(0, 96, 2, 'critical'), 0, 99), 'warn')
+  assert.equal(rawLevel(reading(0, 99, 2, 'normal'), 0, 99), 'risk')
 })
 
 test('full memory with fast swap growth is critical and says why', () => {
   const r = reading(0, 97, 9)
   assert.equal(rawLevel(r, 1.2 * GB), 'crit')
-  assert.equal(causeOf(r, 1.2 * GB), 'memory full, swap +1.2 GB/min')
+  assert.equal(causeOf(r, 1.2 * GB), 'memory 97%, swap +1.2 GB/min')
 })
 
 test('busy CPU alone never raises the level', () => {
@@ -145,11 +150,11 @@ test('first jump straight to critical fires both toast and notification', () => 
   let now = 0
   const h = createHealth(() => now)
   now += 3000
-  h.push(reading(now, 80, 2, 'critical'))
+  h.push(reading(now, 96, 2, 'critical'))
   now += 3000
-  h.push(reading(now, 80, 2, 'critical'))
+  h.push(reading(now, 96, 2, 'critical'))
   now += 3000
-  const r = h.push(reading(now, 80, 2, 'critical'))
+  const r = h.push(reading(now, 96, 2, 'critical'))
   assert.equal(r.level, 'crit')
   assert.deepEqual(h.alerts().map((a) => a.kind), ['toast', 'notify'])
   now += 3000
@@ -161,7 +166,7 @@ test('alerts never name Orca as the app to blame', () => {
   const h = createHealth(() => now)
   for (let i = 0; i < 3; i++) {
     now += 3000
-    h.push(reading(now, 80, 2, 'critical'))
+    h.push(reading(now, 96, 2, 'critical'))
   }
   h.setCulprit({ pid: 30, name: 'Orca', start: null, app: 'Orca', mem: 12 * GB, quittable: false })
   for (const a of h.alerts()) assert.doesNotMatch(a.body, /Orca/)
@@ -200,6 +205,24 @@ test('a single main process with exe suffix is quittable', () => {
   assert.equal(c.quittable, true)
 })
 
+test('raising the critical percent keeps 96% memory on Strained', () => {
+  let now = 0
+  const h = createHealth(() => now)
+  h.setCritAt(99)
+  for (let i = 0; i < 3; i++) {
+    now += 3000
+    h.push(reading(now, 96, 2, 'critical'))
+  }
+  assert.equal(h.snapshot().word, 'Strained')
+  h.setCritAt(95)
+  for (let i = 0; i < 3; i++) {
+    now += 3000
+    h.push(reading(now, 96, 2, 'critical'))
+  }
+  assert.equal(h.snapshot().word, 'Critical')
+  assert.equal(h.snapshot().level, 'crit')
+})
+
 test('five words: Idle, Healthy, Busy, Strained, Critical', () => {
   assert.deepEqual([...STEPS], ['Idle', 'Healthy', 'Busy', 'Strained', 'Critical'])
   assert.equal(stepOf('ok', 4, 40), 0)
@@ -235,7 +258,7 @@ test('the desktop notification is titled Critical', () => {
   const h = createHealth(() => now)
   for (let i = 0; i < 3; i++) {
     now += 3000
-    h.push(reading(now, 80, 2, 'critical'))
+    h.push(reading(now, 96, 2, 'critical'))
   }
   const notify = h.alerts().find((a) => a.kind === 'notify')
   assert.equal(notify.title, 'Critical')
