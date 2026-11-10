@@ -26,7 +26,7 @@ The badge keeps the worker running while the sidebar is closed, so warnings stil
 
 ## Clean up
 
-The broom in the footer starts a cleanup. It launches your chosen agent (Claude, Codex or Grok, set in Settings) in the workspace you have focused, and hands it the list of suspect processes below. The agent checks each one and proposes a kill list with a reason per process. Nothing is quit until you approve it in the agent's terminal. It never touches Orca, its helpers, or agents still running in Orca.
+The broom in the footer starts a cleanup. It launches your chosen agent (Claude, Codex or Grok, set in Settings) in the workspace you have focused (or, if none is, in any workspace on this computer; process cleanup is machine-wide), and hands it the list of suspect processes below. The agent checks each one and proposes a kill list with a reason per process. Nothing is quit until you approve it in the agent's terminal. It never touches Orca, its helpers, or agents still running in Orca.
 
 While it works the broom shows **Cleaning…**, then **Review** with a count when the agent has a list for you, then how many were quit. Click it at any point to jump to the agent's terminal.
 
@@ -56,7 +56,7 @@ It runs as a trusted worker because it reads system counters and lists processes
 - **Show notifications** (`notifications:show`): sends the desktop notification when memory stays critical, so it reaches you when Orca is in the background.
 - **Read agents** (`agent:read`): lists your running agents so **What is this?** can pick one to ask, and so a cleanup can tell when its agent is working or waiting for you.
 - **Send to terminals** (`terminal:send`): types the **What is this?** question, or the cleanup request, into the agent's terminal. It only does this when you choose it.
-- **Read your workspace** (`workspace:read`): finds the workspace you have focused, so the cleanup agent starts there.
+- **Read your workspace** (`workspace:read`): finds the workspace you have focused, so the cleanup agent starts there, or another workspace on this computer when nothing local is focused.
 - **Start agents** (`agent:launch`): starts the cleanup agent you picked in Settings when you click the broom.
 - **Read terminal output** (`terminal:read`): reads the cleanup agent's terminal to see its "Proposed: N" line and whether that terminal is still open.
 - **Own storage** (`storage:own`): saves your settings in the plugin's own storage folder.

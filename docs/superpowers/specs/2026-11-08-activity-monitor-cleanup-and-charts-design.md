@@ -44,7 +44,7 @@ Separately, the charts only cover the last 1–15 minutes and always label time 
 ### Behavior
 
 1. **Press with no session running** → the worker:
-   1. resolves the focused workspace. `workspace.readContext` has no id, so match it against `workspace.list` (by name, branch and its terminals). The focused workspace is a hard requirement (the user's pick, with no fallback). If nothing is focused or the match is ambiguous or empty, it shows the in-panel toast "Open a workspace first" and stops. It never guesses.
+   1. resolves the focused workspace. `workspace.readContext` has no id, so match it against `workspace.list` (by name, branch and its terminals). Only workspaces on this computer count (`hostId` null or `local`), because the suspect list is this machine's processes. If nothing local is focused, or the match is ambiguous, it falls back to the first local workspace whose path exists, since cleanup is machine-wide (changed in 1.1.2; the focused workspace used to be a hard requirement). If there is none, it shows "No Orca workspace on this computer", "Add a project to Orca first" when Orca has no workspaces, or "Could not read your Orca workspaces", and stops.
    2. builds the suspect list (below) and the prompt.
    3. calls `agent.launch({ workspaceId, agent, prompt })` and stores the returned `terminalId` as the cleanup session.
    4. if Settings → "Open cleanup terminal" is on, brings that terminal to the front (see Spikes).

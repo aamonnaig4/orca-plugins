@@ -14,7 +14,7 @@ test('worker hides the status bar badge while calm and Orca refuses none of its 
   await worker.deactivate()
 })
 
-const WS = { id: 'ws1', kind: 'worktree', name: 'app', path: '/tmp/app', branch: 'main', hostId: null }
+const WS = { id: 'ws1', kind: 'worktree', name: 'app', path: '/nonexistent/orca-plugins-test/app', branch: 'main', hostId: null }
 
 function cleanupHost(over = {}) {
   return mockHost({
@@ -81,19 +81,53 @@ async function started(worker) {
   return pending
 }
 
-test('cleanup.start refuses without a focused workspace and launches nothing', async () => {
+const HERE = { id: 'ws_here', kind: 'folder', name: 'here', path: process.cwd(), branch: null, hostId: null }
+const REMOTE = { id: 'ws_ssh', kind: 'worktree', name: 'box', path: process.cwd(), branch: 'main', hostId: 'ssh:box' }
+
+test('cleanup.start with no focused workspace starts the agent in a local one', async () => {
   fakeCli()
-  const worker = await mountWorker(main, { host: cleanupHost({ 'workspace.readContext': null }) })
-  assert.deepEqual(await worker.request('cleanup.start'), { ok: false, reason: 'Open a workspace first' })
+  const worker = await mountWorker(main, {
+    host: cleanupHost({ 'workspace.readContext': null, 'workspace.list': { workspaces: [REMOTE, WS, HERE], truncated: false } })
+  })
+  assert.equal((await started(worker)).ok, true)
+  assert.deepEqual(worker.host.callsOf('agent.launch'), [{ workspaceId: 'ws_here', agent: 'claude' }])
+  await worker.deactivate()
+})
+
+test('cleanup.start falls back to a local workspace when the focused one is ambiguous', async () => {
+  fakeCli()
+  const worker = await mountWorker(main, { host: cleanupHost({ 'workspace.list': { workspaces: [WS, { ...WS, id: 'ws2' }, HERE], truncated: false } }) })
+  assert.equal((await started(worker)).ok, true)
+  assert.deepEqual(worker.host.callsOf('agent.launch'), [{ workspaceId: 'ws_here', agent: 'claude' }])
+  await worker.deactivate()
+})
+
+test('cleanup.start refuses when Orca has no local workspace and launches nothing', async () => {
+  fakeCli()
+  const worker = await mountWorker(main, { host: cleanupHost({ 'workspace.readContext': null, 'workspace.list': { workspaces: [REMOTE], truncated: false } }) })
+  assert.deepEqual(await worker.request('cleanup.start'), { ok: false, reason: 'No Orca workspace on this computer' })
   assert.equal(worker.host.callsOf('agent.launch').length, 0)
   await worker.deactivate()
 })
 
-test('cleanup.start refuses when two workspaces share the focused name and branch', async () => {
+test('cleanup.start asks for a project when Orca has no workspaces', async () => {
   fakeCli()
-  const worker = await mountWorker(main, { host: cleanupHost({ 'workspace.list': { workspaces: [WS, { ...WS, id: 'ws2' }], truncated: false } }) })
-  assert.deepEqual(await worker.request('cleanup.start'), { ok: false, reason: 'Open a workspace first' })
+  const worker = await mountWorker(main, { host: cleanupHost({ 'workspace.readContext': null, 'workspace.list': { workspaces: [], truncated: false } }) })
+  assert.deepEqual(await worker.request('cleanup.start'), { ok: false, reason: 'Add a project to Orca first' })
   assert.equal(worker.host.callsOf('agent.launch').length, 0)
+  await worker.deactivate()
+})
+
+test('cleanup.start never starts the agent in a focused remote workspace', async () => {
+  fakeCli()
+  const worker = await mountWorker(main, {
+    host: cleanupHost({
+      'workspace.readContext': { branch: 'main', displayName: 'box', terminals: [] },
+      'workspace.list': { workspaces: [REMOTE, HERE], truncated: false }
+    })
+  })
+  assert.equal((await started(worker)).ok, true)
+  assert.deepEqual(worker.host.callsOf('agent.launch'), [{ workspaceId: 'ws_here', agent: 'claude' }])
   await worker.deactivate()
 })
 
