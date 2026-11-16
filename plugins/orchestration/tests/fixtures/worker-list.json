@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "result": {
+    "workers": [
+      {
+        "dispatchId": "ctx_6fc5b45b8c33",
+        "taskId": "task_cd1b408fd2fe",
+        "state": "succeeded",
+        "liveness": "live",
+        "agent": "claude/claude-opus-5-5",
+        "terminal": "term_c9f2b7b0-fc9f-4f05-89c9-b16bca2fc0a5",
+        "terminalState": "retained",
+        "workspace": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+        "host": "local"
+      },
+      {
+        "dispatchId": "ctx_92026b9d61c3",
+        "taskId": "task_083a27acd011",
+        "state": "succeeded",
+        "liveness": "unverifiable",
+        "workspace": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+        "host": "local",
+        "attention": [
+          "unverifiable"
+        ]
+      }
+    ],
+    "scope": {
+      "source": "all"
+    }
+  }
+}

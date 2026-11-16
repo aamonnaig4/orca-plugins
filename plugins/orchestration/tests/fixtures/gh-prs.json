@@ -1,0 +1,728 @@
+{
+  "data": {
+    "rateLimit": {
+      "remaining": 4696,
+      "resetAt": "2026-11-15T21:57:04Z"
+    },
+    "repository": {
+      "nameWithOwner": "stablyai/orca",
+      "defaultBranchRef": {
+        "name": "main"
+      },
+      "b0": {
+        "nodes": [
+          {
+            "number": 42796,
+            "url": "https://github.com/stablyai/orca/pull/42796",
+            "headRefName": "feat/cli-worktree-notes",
+            "baseRefName": "main",
+            "headRefOid": "f3f6bca7179c042f01a8a1239899ce98ff51aecf",
+            "baseRefOid": "69cfecdf700ef94f65b2c38a078f404684ca5482",
+            "isDraft": false,
+            "mergeable": "UNKNOWN",
+            "reviewDecision": null,
+            "reviewRequests": {
+              "totalCount": 0
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "SUCCESS",
+                      "contexts": {
+                        "pageInfo": {
+                          "hasNextPage": false
+                        },
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "clean",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132962510999,
+                            "startedAt": "2026-11-15T21:21:38Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43763243914/job/132962510999"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "CodeRabbit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132963026070,
+                            "startedAt": "2026-11-15T21:23:21Z",
+                            "detailsUrl": "https://app.coderabbit.ai/change-stack/stablyai/orca/pull/42796?scope=ghh_OusAJGA4HG8ljoOV0wJvVx8NmnZIjc2DdjmxOu0xZWA"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "nodes": [
+                {
+                  "id": "PRRT_kwDORpCz1s63tgCV",
+                  "isResolved": false,
+                  "comments": {
+                    "nodes": [
+                      {
+                        "id": "PRRC_kwDORpCz1s8AAAABEP5qAQ",
+                        "author": {
+                          "__typename": "Bot",
+                          "login": "coderabbitai"
+                        },
+                        "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**<picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/major-16.svg\" width=\"16\" height=\"16\" align=\"absmiddle\" alt=\"\"></picture> Major** \u00b7 **Data Integrity & Integration** \u00b7 **Heavy lift**\n\n**Folder workspaces can lose\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/42796#discussion_r4580076033",
+                        "path": "src/cli/specs/worktree-notes.ts",
+                        "line": 46
+                      },
+                      {
+                        "id": "PRRC_kwDORpCz1s8AAAABEQGx1g",
+                        "author": {
+                          "__typename": "User",
+                          "login": "jxnxts"
+                        },
+                        "body": "Good catch. `folderWorkspace.update` now accepts the same optional `diffCommentsBase` and the runtime merges against it with `mergeDiffCommentMutation` (in `RuntimeProjectGroupController.updateFolderWorkspace`, re-reading the current list right before the write). The CLI sends the list it read. Adde\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/42796#discussion_r4580291030",
+                        "path": "src/cli/specs/worktree-notes.ts",
+                        "line": 46
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "PRRT_kwDORpCz1s63uFCv",
+                  "isResolved": false,
+                  "comments": {
+                    "nodes": [
+                      {
+                        "id": "PRRC_kwDORpCz1s8AAAABEQI1hQ",
+                        "author": {
+                          "__typename": "Bot",
+                          "login": "coderabbitai"
+                        },
+                        "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**<picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/major-16.svg\" width=\"16\" height=\"16\" align=\"absmiddle\" alt=\"\"></picture> Major** \u00b7 **Data Integrity & Integration** \u00b7 **Quick win**\n\n**Gate the note writer on a r\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/42796#discussion_r4580324741",
+                        "path": "src/cli/workspaces/folder-workspace-mutations.ts",
+                        "line": 136
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "reviews": {
+              "nodes": [
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYG0Ryg",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**Actionable comments posted: 1**\n\n<h6>\n<details>\n<summary><picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/info.svg\" width=\"12\" height=\"12\" align=\"absmiddle\" alt=\"\"></picture> Review info</summary>\n<dl>\n<dd>\n<br>\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42796#pullrequestreview-5912728010"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYHEUDA",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "User",
+                    "login": "jxnxts"
+                  },
+                  "body": "",
+                  "url": "https://github.com/stablyai/orca/pull/42796#pullrequestreview-5912990732"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYHGhtQ",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**Actionable comments posted: 4**\n\n<h6>\n<details>\n<summary><picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/info.svg\" width=\"12\" height=\"12\" align=\"absmiddle\" alt=\"\"></picture> Review info</summary>\n<dl>\n<dd>\n<br>\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42796#pullrequestreview-5913026997"
+                }
+              ]
+            },
+            "comments": {
+              "nodes": [
+                {
+                  "id": "IC_kwDORpCz1s8AAAABm1FDhQ",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n<a href=\"https://app.coderabbit.ai/change-stack/stablyai/orca/pull/42796?scope=ghh_OusAJGA4HG8ljoOV0wJvVx8NmnZIjc2DdjmxOu0xZWA&amp;cs_source=review_comment\">\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42796#issuecomment-6900761477"
+                }
+              ]
+            }
+          },
+          {
+            "number": 42783,
+            "url": "https://github.com/stablyai/orca/pull/42783",
+            "headRefName": "brennanb2025/sqlite-downgrade-history",
+            "baseRefName": "main",
+            "headRefOid": "b2df7e71cea0a82a4c2e8f5d0f5b158e0b327e61",
+            "baseRefOid": "ad2983490078cf757fd1594e275f9caea82d10d9",
+            "isDraft": false,
+            "mergeable": "UNKNOWN",
+            "reviewDecision": null,
+            "reviewRequests": {
+              "totalCount": 0
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "FAILURE",
+                      "contexts": {
+                        "pageInfo": {
+                          "hasNextPage": false
+                        },
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "Mobile verify",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132964958801,
+                            "startedAt": "2026-11-15T21:30:09Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011621/job/132964958801"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "Build the linux-x64-glibc orcad template",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132964959938,
+                            "startedAt": "2026-11-15T21:30:07Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011804/job/132964959938"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "static analysis and typecheck",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965040206,
+                            "startedAt": "2026-11-15T21:30:25Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965040206"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "persistence (ubuntu-22.04)",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965093604,
+                            "startedAt": "2026-11-15T21:30:33Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011754/job/132965093604"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "package",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965040172,
+                            "startedAt": "2026-11-15T21:30:23Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965040172"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "package (windows)",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965040147,
+                            "startedAt": "2026-11-15T21:30:22Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965040147"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 1/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091848,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091848"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 2/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091894,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091894"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 3/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091876,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091876"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 4/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091818,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091818"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 5/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091860,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091860"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 6/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091819,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091819"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 7/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091890,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091890"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 8/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091891,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091891"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 9/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091879,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091879"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 10/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091835,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091835"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 11/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091870,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091870"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test / tests node 24 12/12",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132965091896,
+                            "startedAt": "2026-11-15T21:30:35Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132965091896"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "PR checks passed",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "databaseId": 132966468511,
+                            "startedAt": "2026-11-15T21:35:19Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764011794/job/132966468511"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "nodes": [
+                {
+                  "id": "PRRT_kwDORpCz1s63sxa4",
+                  "isResolved": false,
+                  "comments": {
+                    "nodes": [
+                      {
+                        "id": "PRRC_kwDORpCz1s8AAAABEPmR5A",
+                        "author": {
+                          "__typename": "Bot",
+                          "login": "coderabbitai"
+                        },
+                        "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**<picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/amber-16.svg\" width=\"16\" height=\"16\" align=\"absmiddle\" alt=\"\"></picture> Minor** \u00b7 **Performance & Scalability** \u00b7 **Heavy lift**\n\n**Do not raise the SQLite basel\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/42783#discussion_r4579758564",
+                        "path": "config/main-blocking-sqlite-baseline.txt",
+                        "line": 42
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "PRRT_kwDORpCz1s63sxa7",
+                  "isResolved": false,
+                  "comments": {
+                    "nodes": [
+                      {
+                        "id": "PRRC_kwDORpCz1s8AAAABEPmR6A",
+                        "author": {
+                          "__typename": "Bot",
+                          "login": "coderabbitai"
+                        },
+                        "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**<picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/major-16.svg\" width=\"16\" height=\"16\" align=\"absmiddle\" alt=\"\"></picture> Major** \u00b7 **Data Integrity & Integration** \u00b7 **Heavy lift**\n\n**Keep a failed chat pending\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/42783#discussion_r4579758568",
+                        "path": "src/main/native-chat/agent-session-journal/database/journal-legacy-reconcile.ts",
+                        "line": null
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "reviews": {
+              "nodes": [
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYGbKnA",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**Actionable comments posted: 2**\n\n---\n\n<details>\n<summary><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/bot-dark.svg\"><img src=\"https://storage.googleapis.com/coderab\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42783#pullrequestreview-5912316572"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYGqsQQ",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**Actionable comments posted: 3**\n\n<h6>\n<details>\n<summary><picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/info.svg\" width=\"12\" height=\"12\" align=\"absmiddle\" alt=\"\"></picture> Review info</summary>\n<dl>\n<dd>\n<br>\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42783#pullrequestreview-5912570945"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYG5qCA",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n**Actionable comments posted: 2**\n\n<h6>\n<details>\n<summary><picture><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/info.svg\" width=\"12\" height=\"12\" align=\"absmiddle\" alt=\"\"></picture> Review info</summary>\n<dl>\n<dd>\n<br>\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42783#pullrequestreview-5912816136"
+                }
+              ]
+            },
+            "comments": {
+              "nodes": [
+                {
+                  "id": "IC_kwDORpCz1s8AAAABmz_ZTw",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n<a href=\"https://app.coderabbit.ai/change-stack/stablyai/orca/pull/42783?scope=ghh_OusAJGA4HG8ljoOV0wJvVx8NmnZIjc2DdjmxOu0xZWA&amp;cs_source=review_comment\">\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42783#issuecomment-6899620175"
+                }
+              ]
+            }
+          },
+          {
+            "number": 42710,
+            "url": "https://github.com/stablyai/orca/pull/42710",
+            "headRefName": "brennanb2025/chat-switch-activity",
+            "baseRefName": "brennanb2025/chat-switch-editor-owner",
+            "headRefOid": "e9e2efc5a25b8d8a91968a0ce08df04e4f199bfb",
+            "baseRefOid": "9fa25aefb47b68a7118945557089703b8cb7ba21",
+            "isDraft": false,
+            "mergeable": "MERGEABLE",
+            "reviewDecision": null,
+            "reviewRequests": {
+              "totalCount": 0
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "SUCCESS",
+                      "contexts": {
+                        "pageInfo": {
+                          "hasNextPage": false
+                        },
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "mobile_web_bundle",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872427345,
+                            "startedAt": "2026-11-15T16:10:43Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733990259/job/132872427345"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "mobile_web_bundle",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872560554,
+                            "startedAt": "2026-11-15T16:11:11Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733990285/job/132872560554"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "clean",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872421737,
+                            "startedAt": "2026-11-15T16:10:41Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733987732/job/132872421737"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "javascript",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872427473,
+                            "startedAt": "2026-11-15T16:10:43Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733990261/job/132872427473"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "changes",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872427720,
+                            "startedAt": "2026-11-15T16:10:43Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733990285/job/132872427720"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "Mobile verify",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132872427819,
+                            "startedAt": "2026-11-15T16:10:45Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43733990341/job/132872427819"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "nodes": []
+            },
+            "reviews": {
+              "nodes": []
+            },
+            "comments": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 42782,
+            "url": "https://github.com/stablyai/orca/pull/42782",
+            "headRefName": "feature/turkish-general-settings",
+            "baseRefName": "main",
+            "headRefOid": "5272808d31d001490cdd73545757ea9af1eb4e51",
+            "baseRefOid": "9bebd77c77d2c3d77975fe9074a395cfc993db5b",
+            "isDraft": false,
+            "mergeable": "UNKNOWN",
+            "reviewDecision": null,
+            "reviewRequests": {
+              "totalCount": 1
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "SUCCESS",
+                      "contexts": {
+                        "pageInfo": {
+                          "hasNextPage": false
+                        },
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "clean",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "databaseId": 132966228403,
+                            "startedAt": "2026-11-15T21:34:28Z",
+                            "detailsUrl": "https://github.com/stablyai/orca/actions/runs/43764426327/job/132966228403"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "CodeRabbit",
+                            "status": "COMPLETED",
+                            "conclusion": "SKIPPED",
+                            "databaseId": 132966746277,
+                            "startedAt": "2026-11-15T21:36:14Z",
+                            "detailsUrl": "https://coderabbit.ai?utm_source=cr_app&utm_medium=github"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "nodes": []
+            },
+            "reviews": {
+              "nodes": [
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYGXI_w",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n\n\n---\n\n<details>\n<summary><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/bot-dark.svg\"><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42782#pullrequestreview-5912250623"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYHBzAA",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n\n\n---\n\n<details>\n<summary><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/bot-dark.svg\"><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42782#pullrequestreview-5912949504"
+                },
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABYHEz2A",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n\n\n---\n\n<details>\n<summary><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-icons-v1/bot-dark.svg\"><img src=\"https://storage.googleapis.com/coderabbit_public_assets/review-comment-\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42782#pullrequestreview-5912998872"
+                }
+              ]
+            },
+            "comments": {
+              "nodes": [
+                {
+                  "id": "IC_kwDORpCz1s8AAAABmzy94A",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- coderabbit-ai-generated:v1 -->\n\n<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n<a href=\"https://app.coderabbit.ai/change-stack/stablyai/orca/pull/42782?scope=ghh_OusAJGA4HG8ljoOV0wJvVx8NmnZIjc2DdjmxOu0xZWA&amp;cs_source=review_comment\">\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/42782#issuecomment-6899416544"
+                }
+              ]
+            }
+          },
+          {
+            "number": 6404,
+            "url": "https://github.com/stablyai/orca/pull/6404",
+            "headRefName": "wolfiesch/marketplace-leak-fix",
+            "baseRefName": "main",
+            "headRefOid": "8a49e07323cbe553e6422b1f9169085ecf7594ca",
+            "baseRefOid": "393ca7b0ba4d23b83b7010a2d1bfee8fde361474",
+            "isDraft": true,
+            "mergeable": "UNKNOWN",
+            "reviewDecision": null,
+            "reviewRequests": {
+              "totalCount": 1
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "nodes": [
+                {
+                  "id": "PRRT_kwDORpCz1s6Ma5ZF",
+                  "isResolved": true,
+                  "comments": {
+                    "nodes": [
+                      {
+                        "id": "PRRC_kwDORpCz1s7PX67u",
+                        "author": {
+                          "__typename": "Bot",
+                          "login": "coderabbitai"
+                        },
+                        "body": "_\ud83e\ude7a Stability & Availability_ | _\ud83d\udd34 Critical_\n\n<details>\n<summary>\ud83e\udde9 Analysis chain</summary>\n\n\ud83c\udf10 Web query:\n\n`Does git clone update the mtime of the target clone directory during object transfer, or only when files are checked out into the working tree root?`\n\n\ud83d\udca1 Result:\n\nGit does not preserve the origi\u2026",
+                        "url": "https://github.com/stablyai/orca/pull/6404#discussion_r3479154414",
+                        "path": "src/main/codex-accounts/runtime-home-service.ts",
+                        "line": 1522
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "reviews": {
+              "nodes": [
+                {
+                  "id": "PRR_kwDORpCz1s8AAAABEMrlnw",
+                  "state": "COMMENTED",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "**Actionable comments posted: 1**\n\n---\n\n<details>\n<summary>\u2139\ufe0f Review info</summary>\n\n<details>\n<summary>\u2699\ufe0f Run configuration</summary>\n\n**Configuration used**: Repository UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Run ID**: `6adb5405-c9e1-4dda-b9ba-87e9d91087ab`\n\n</details>\n\n<details>\n<summary>\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/6404#pullrequestreview-4576699807"
+                }
+              ]
+            },
+            "comments": {
+              "nodes": [
+                {
+                  "id": "IC_kwDORpCz1s8AAAABHnvIIA",
+                  "author": {
+                    "__typename": "Bot",
+                    "login": "coderabbitai"
+                  },
+                  "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n[![Review Change Stack](https://storage.googleapis.com/coderabbit_public_assets/review-stack-in-coderabbit-ui.svg)](https://app.coderabbit.ai/change-stack/stablyai/orca/pull/6404?utm_source=gith\u2026",
+                  "url": "https://github.com/stablyai/orca/pull/6404#issuecomment-4806395936"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

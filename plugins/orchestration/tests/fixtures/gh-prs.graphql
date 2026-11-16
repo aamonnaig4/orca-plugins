@@ -1,0 +1,53 @@
+query ($owner: String!, $name: String!, $b0: String!, $b1: String!) {
+  rateLimit { remaining resetAt }
+  repository(owner: $owner, name: $name) {
+    nameWithOwner
+    defaultBranchRef { name }
+    b0: pullRequests(headRefName: $b0, states: OPEN, first: 1, orderBy: { field: UPDATED_AT, direction: DESC }) { nodes { ...PrFields } }
+    b1: pullRequests(headRefName: $b1, states: OPEN, first: 1, orderBy: { field: UPDATED_AT, direction: DESC }) { nodes { ...PrFields } }
+  }
+}
+fragment PrFields on PullRequest {
+  number
+  url
+  headRefName
+  baseRefName
+  headRefOid
+  baseRefOid
+  isDraft
+  mergeable
+  reviewDecision
+  reviewRequests(first: 1) { totalCount }
+  commits(last: 1) {
+    nodes {
+      commit {
+        statusCheckRollup {
+          state
+          contexts(first: 100) {
+            pageInfo { hasNextPage }
+            nodes {
+              __typename
+              ... on CheckRun { name status conclusion databaseId startedAt detailsUrl }
+              ... on StatusContext { context state targetUrl }
+            }
+          }
+        }
+      }
+    }
+  }
+  reviewThreads(first: 100) {
+    nodes {
+      id
+      isResolved
+      comments(last: 20) {
+        nodes { id author { __typename login } body url path line }
+      }
+    }
+  }
+  reviews(last: 20) {
+    nodes { id state author { __typename login } body url }
+  }
+  comments(last: 30) {
+    nodes { id author { __typename login } body url }
+  }
+}

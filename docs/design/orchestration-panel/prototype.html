@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestration Prototype</title>
+<style>
+:root {
+  --doc-bg: #f1efe9; --doc-fg: #2b2a27; --doc-muted: #8a877f; --doc-surface: #ffffff; --doc-line: #0002; --doc-accent: #16a34a;
+  --bg: #ffffff; --fg: #1f1f1f; --muted: #6b6b6b; --border: #e6e6e6; --side: #f7f7f6;
+  --ok: #1a7f37; --warn: #b45309; --bad: #cf222e; --info: #2563eb;
+  --hover: rgba(0,0,0,0.05); --chip: rgba(0,0,0,0.06); --track: rgba(0,0,0,0.12);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --doc-bg: #161513; --doc-fg: #e9e6df; --doc-muted: #8f8b82; --doc-surface: #211f1c; --doc-line: #fff2; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--doc-bg); color: var(--doc-fg); font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+.page { display: grid; grid-template-columns: 290px 1fr; gap: 18px; padding: 18px; min-height: 100vh; }
+.ctl { background: var(--doc-surface); border: 1px solid var(--doc-line); border-radius: 12px; padding: 14px; align-self: start; position: sticky; top: 18px; max-height: calc(100vh - 36px); overflow: auto; }
+.ctl h1 { font-size: 16px; margin: 0 0 2px; }
+.ctl .sub { color: var(--doc-muted); font-size: 12px; margin: 0 0 12px; }
+.ctl h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--doc-muted); margin: 16px 0 6px; }
+.ctl button { display: block; width: 100%; text-align: left; margin: 0 0 5px; padding: 6px 9px; border-radius: 7px; border: 1px solid var(--doc-line); background: transparent; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+.ctl button:hover { background: color-mix(in srgb, var(--doc-fg) 7%, transparent); }
+.ctl button:disabled { opacity: .4; cursor: default; }
+.ctl label { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin: 0 0 6px; gap: 8px; }
+.ctl select, .ctl input[type=range] { font: inherit; font-size: 12px; }
+.ctl .log { font: 11px/1.45 ui-monospace, Menlo, monospace; color: var(--doc-muted); white-space: pre-wrap; max-height: 180px; overflow: auto; border-top: 1px solid var(--doc-line); padding-top: 6px; margin-top: 8px; }
+.stage { overflow-x: auto; }
+.win { display: flex; height: 780px; min-width: 900px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px #0002; font: 13px/1.35 system-ui, -apple-system, sans-serif; }
+.win svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.lnav { width: 210px; background: var(--side); border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.lnav .proj { font-size: 11px; font-weight: 650; color: #888; text-transform: uppercase; letter-spacing: .05em; padding: 8px 8px 4px; }
+.lnav .ws { padding: 5px 8px; border-radius: 6px; display: flex; gap: 7px; align-items: center; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lnav .ws:hover { background: var(--hover); }
+.lnav .ws.on { background: #fff; box-shadow: 0 0 0 1px var(--border); }
+.lnav .ws .d { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.main { flex: 1; min-width: 260px; display: flex; flex-direction: column; }
+.tabbar { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; min-height: 35px; }
+.tabbar span { white-space: nowrap; padding: 6px 10px; border-radius: 6px 6px 0 0; color: #777; display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.tabbar span.on { background: #fff; color: #111; border: 1px solid var(--border); border-bottom-color: #fff; margin-bottom: -1px; }
+.mbody { flex: 1; overflow: auto; padding: 16px; }
+.right { border-left: 1px solid var(--border); display: flex; flex-direction: column; position: relative; container-type: inline-size; }
+.tabs { display: flex; align-items: center; gap: 2px; padding: 8px 8px 6px; border-bottom: 1px solid var(--border); color: #555; }
+.tabs .t { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; }
+.tabs .t.on { border: 1.5px solid #bbb; color: #111; box-shadow: inset 0 -2px 0 #111; }
+.sp { flex: 1; }
+.pbody { flex: 1; overflow: auto; display: flex; flex-direction: column; min-height: 0; }
+.hd { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+.ttl { font-weight: 650; font-size: 14px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 99px; background: var(--chip); font-size: 11.5px; color: #444; white-space: nowrap; }
+.seg { display: inline-flex; background: var(--chip); border-radius: 7px; padding: 2px; }
+.seg button { padding: 3px 9px; border-radius: 5px; font-size: 12px; color: #555; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; border: 0; background: transparent; font-family: inherit; }
+.seg button.on { background: #fff; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.redot { width: 6px; height: 6px; border-radius: 50%; background: var(--bad); display: inline-block; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; background: var(--chip); font-size: 12px; color: #222; cursor: pointer; border: 0; font-family: inherit; }
+.btn:hover { background: rgba(0,0,0,.1); }
+.btn.pri { background: #111; color: #fff; }
+.btn.ghost { background: transparent; border: 1px solid var(--track); }
+.btn.danger { background: var(--bad); color: #fff; }
+.ib { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; color: #555; cursor: pointer; border: 0; background: transparent; }
+.ib:hover { background: var(--hover); }
+.muted { color: var(--muted); } .small { font-size: 11.5px; }
+.compose { margin: 6px 12px 10px; border: 1px solid var(--track); border-radius: 10px; padding: 8px 10px; }
+.compose textarea { width: 100%; border: 0; outline: none; resize: none; font: inherit; color: inherit; background: transparent; min-height: 36px; }
+.compose .bar2 { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.grp-h { padding: 10px 14px 4px; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: #8a8a8a; display: flex; gap: 6px; align-items: center; }
+.n { background: var(--chip); border-radius: 99px; padding: 0 6px; font-weight: 600; letter-spacing: 0; }
+.item { display: flex; gap: 9px; padding: 7px 10px 7px 14px; align-items: flex-start; cursor: pointer; position: relative; }
+.item:hover { background: var(--hover); }
+.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto; }
+.mainc { flex: 1; min-width: 0; }
+.l1 { display: flex; gap: 6px; align-items: baseline; }
+.name { font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.num { color: #888; font-size: 12px; }
+.l2 { color: var(--muted); font-size: 12px; margin-top: 1px; }
+.rt { font-size: 11.5px; color: #888; white-space: nowrap; }
+.tag { font-size: 10.5px; padding: 0 5px; border-radius: 4px; background: var(--chip); color: #555; margin-left: 4px; }
+.bg-bad { background: var(--bad); } .bg-ok { background: var(--ok); } .bg-warn { background: var(--warn); } .bg-info { background: var(--info); } .bg-mute { background: #bbb; }
+.c-bad { color: var(--bad); } .c-ok { color: var(--ok); } .c-warn { color: var(--warn); }
+.foot { border-top: 1px solid var(--border); padding: 7px 12px; display: flex; gap: 14px; color: #666; font-size: 12px; align-items: center; flex-wrap: wrap; }
+.foot .d { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.guard { margin: 8px 12px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--bad) 8%, transparent); color: #7a1d1d; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.guard.att { background: color-mix(in srgb, var(--warn) 10%, transparent); color: #6b3b00; }
+.card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 11px; }
+.term { margin: 0 12px 8px; background: #111; color: #d6d6d6; border-radius: 8px; padding: 10px; font: 11.5px/1.5 ui-monospace, Menlo, monospace; flex: 1; overflow: auto; min-height: 120px; }
+.term .g { color: #7ee787; } .term .y { color: #e3b341; } .term .c { color: #79c0ff; } .term .m { color: #8b949e; } .term .r { color: #ff7b72; }
+.menu { position: absolute; right: 8px; top: 30px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.18); z-index: 5; min-width: 170px; padding: 4px; }
+.menu button { display: flex; gap: 8px; width: 100%; text-align: left; padding: 6px 8px; border: 0; background: transparent; font: inherit; font-size: 12.5px; border-radius: 5px; cursor: pointer; color: #222; align-items: center; }
+.menu button:hover { background: var(--hover); }
+.menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.kb { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; padding: 4px 12px 10px; }
+.kc { background: rgba(0,0,0,0.03); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 260px; }
+.kh { font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: #8a8a8a; padding: 2px 4px; display: flex; gap: 6px; align-items: center; }
+.kt { background: #fff; border: 1px solid var(--border); border-radius: 7px; padding: 7px 8px; font-size: 12px; cursor: pointer; position: relative; }
+.kt:hover { border-color: #ccc; }
+.kt .bdg { display: flex; gap: 6px; align-items: center; margin-top: 5px; font-size: 11px; color: #888; }
+.kt .bdg .dot { width: 7px; height: 7px; margin: 0; }
+.toasts { position: fixed; right: 18px; top: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+.toast { background: #222; color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; box-shadow: 0 8px 24px #0004; max-width: 300px; font-family: system-ui, sans-serif; }
+.toast b { display: block; font-size: 11px; color: #aaa; margin-bottom: 2px; font-weight: 600; }
+.chatmsg { padding: 8px 14px; }
+.msg.me { margin-left: auto; background: var(--chip); padding: 7px 10px; border-radius: 12px 12px 3px 12px; max-width: 85%; width: fit-content; }
+.msg.ai { margin: 8px 0; }
+.set { max-width: 560px; }
+.set .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 20px; }
+.pset .set .row { flex-wrap: wrap; gap: 8px; }
+.set .k { font-weight: 600; } .set .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.set select, .set input { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--track); border-radius: 6px; background: #fff; color: #111; }
+.agentrow { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; }
+.agentrow:hover { background: var(--hover); }
+.agentrow.on { border-color: #111; }
+.agentrow.dis { opacity: .45; cursor: default; }
+.empty { flex: 1; display: grid; place-items: center; text-align: center; padding: 24px; }
+.queued { margin: 0 12px 6px; font-size: 12px; padding: 6px 9px; border-radius: 7px; background: color-mix(in srgb, var(--info) 8%, transparent); color: #1e3a8a; }
+.gatebtns { display: flex; gap: 6px; margin-top: 6px; }
+@container (min-width: 640px) { .narrow-only { display: none !important; } }
+@container (max-width: 639px) { .wide-only { display: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-files" viewBox="0 0 24 24"><path d="M15 2H9a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6z"/><path d="M5 6v14a2 2 0 0 0 2 2h9"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 8.5v7M18 8.5c0 5-6 4-11 7.5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="M4 7l2 2 3-3M4 16l2 2 3-3M12 7h8M12 17h8"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+    <symbol id="i-blocks" viewBox="0 0 24 24"><rect x="3" y="11" width="10" height="10" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><path d="M3 11V5a2 2 0 0 1 2-2h5v8"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+    <symbol id="i-net" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="12" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.2v9.6M12 12H5v4.8M12 12h7v4.8"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 18h7"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h12M12 6l6 6-6 6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-diff" viewBox="0 0 24 24"><path d="M12 4v8M8 8h8M8 18h8"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 4v-4H5z"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3zM12 12v8"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <aside class="ctl">
+    <h1>Orchestration prototype</h1>
+    <p class="sub">Fake data. Click around the panel, then use these to make things happen.</p>
+
+    <h2>Panel</h2>
+    <label>Width <span><input id="w" type="range" min="360" max="820" value="400"> <span id="wv">400</span>px</span></label>
+    <label>Chat style <select id="surf"><option value="chat">Chat</option><option value="terminal">Terminal</option></select></label>
+    <label>Orchestrator agent <select id="agentSel"></select></label>
+    <button id="reset">Start over (first run)</button>
+    <button id="skip">Skip to: 4 workers running</button>
+
+    <h2>GitHub events</h2>
+    <button data-ev="ci">CI fails on bug hotkey (#4547)</button>
+    <button data-ev="review">Review comment on calendar (#4545)</button>
+    <button data-ev="conflict">Merge conflict on settings sync (#4551)</button>
+    <button data-ev="green">All checks pass on bug hotkey</button>
+    <button data-ev="ready">Make chat opening screen ready (#4546)</button>
+
+    <h2>Agents</h2>
+    <button data-ev="gate">Orchestrator raises a question for you</button>
+    <button data-ev="push">Worker pushes a fix</button>
+    <button data-ev="merge">A worker tries gh pr merge</button>
+    <button data-ev="mergeOther">A Gemini worker tries to merge (not blockable)</button>
+
+    <div class="log" id="log"></div>
+  </aside>
+
+  <main class="stage">
+    <div class="win" id="win">
+      <nav class="lnav" id="lnav"></nav>
+      <section class="main">
+        <div class="tabbar" id="tabbar"></div>
+        <div class="mbody" id="mbody"></div>
+      </section>
+      <section class="right" id="right">
+        <div class="tabs"><span class="t"><svg><use href="#i-files"/></svg></span><span class="t"><svg><use href="#i-grid"/></svg></span><span class="t"><svg><use href="#i-branch"/></svg></span><span class="t"><svg><use href="#i-tasks"/></svg></span><span class="t"><svg><use href="#i-plug"/></svg></span><span class="t"><svg><use href="#i-activity"/></svg></span><span class="t"><svg><use href="#i-play"/></svg></span><span class="t on"><svg><use href="#i-net"/></svg></span><span class="t"><svg><use href="#i-blocks"/></svg></span><span class="sp"></span><span class="t"><svg><use href="#i-panel"/></svg></span></div>
+        <div class="pbody" id="panel"></div>
+        <div class="foot" id="foot"></div>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+var AGENTS = [
+  { id: "claude", label: "Claude", cmd: "claude", installed: true, chat: true, guard: true },
+  { id: "codex", label: "Codex", cmd: "codex", installed: true, chat: true, guard: false },
+  { id: "grok", label: "Grok", cmd: "grok", installed: true, chat: true, guard: false },
+  { id: "gemini", label: "Gemini", cmd: "gemini", installed: true, chat: false, guard: false },
+  { id: "antigravity", label: "Antigravity", cmd: "agy", installed: true, chat: true, guard: false },
+  { id: "cursor", label: "Cursor", cmd: "cursor-agent", installed: true, chat: false, guard: false },
+  { id: "copilot", label: "GitHub Copilot", cmd: "copilot", installed: false, chat: true },
+  { id: "opencode", label: "OpenCode", cmd: "opencode", installed: false, chat: true },
+  { id: "aider", label: "Aider", cmd: "aider", installed: false, chat: false },
+  { id: "goose", label: "Goose", cmd: "goose", installed: false, chat: false },
+  { id: "kimi", label: "Kimi", cmd: "kimi", installed: false, chat: true },
+  { id: "droid", label: "Droid", cmd: "droid", installed: false, chat: false }
+];
+
+function fresh() {
+  return {
+    firstRun: true, view: "chat", agent: "claude", surface: "chat", suffix: "-oa", interval: 60, attempts: 3, guardOn: true,
+    orch: null, queued: [], workers: [], term: [], reports: [], banner: null, blocks: 0, menu: null, confirmRm: null,
+    mainTab: "home", gate: null, polling: false
+  };
+}
+var S = fresh();
+var clock = 0;
+
+function agentOf(id) { return AGENTS.filter(function (a) { return a.id === id; })[0]; }
+function surfaceFor(id) { return S.surface; }
+function log(t) { var el = document.getElementById("log"); el.textContent = "› " + t + "\n" + el.textContent; }
+function toast(title, body) {
+  var t = document.createElement("div"); t.className = "toast"; t.innerHTML = "<b>Orca · Orchestration</b>" + title + (body ? "<div style='color:#ccc;margin-top:2px'>" + body + "</div>" : "");
+  document.getElementById("toasts").appendChild(t); setTimeout(function () { t.remove(); }, 4500);
+}
+function W(name) { return S.workers.filter(function (w) { return w.key === name; })[0]; }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+function seedWorkers() {
+  S.workers = [
+    mk("hotkey", "bug hotkey", 4547, "feat/bug-report-hotkey", "watching", "CI running"),
+    mk("calendar", "calendar month picker", 4545, "feat/calendar-rail-month-bottom", "watching", "CI running"),
+    mk("chatscreen", "chat opening screen", 4546, "feat/chat-opening-screen", "watching", "CI running"),
+    mk("settings", "settings sync", 4551, "feat/settings-sync", "watching", "CI running", "gemini")
+  ];
+  S.workers[2].draft = true;
+}
+function mk(key, title, pr, branch, state, detail, agent) {
+  return { key: key, title: title, pr: pr, branch: branch, state: state, detail: detail, attempts: 0, agent: agent || "claude", draft: false, kept: false, stopped: false, seen: {}, updated: clock };
+}
+function wname(w) { return w.title + S.suffix; }
+
+function startOrchestrator(task) {
+  var surf = surfaceFor(S.agent);
+  S.orch = { agent: S.agent, surface: surf, run: "r-" + (80 + Math.floor(Math.random() * 9)), status: "working" };
+  S.term = [
+    { c: "m", t: "orchestrator · " + agentOf(S.agent).cmd + " · yimby" },
+    { c: "c", t: "› " + task },
+    { c: "m", t: "orca skills get orchestration" },
+    { c: "m", t: "orca orchestration run-create --title \"" + task.slice(0, 40) + "\"" }
+  ];
+  S.reports = [{ who: "you", t: task }];
+  log("agent.launch --agent " + S.agent + " (background terminal) in ~/.orca-orchestration/yimby · project.setHidden · env ORCA_ORCH_URL + token");
+  render();
+  setTimeout(function () {
+    seedWorkers();
+    S.workers.forEach(function (w) {
+      S.term.push({ c: "g", t: "● worker-start --repo name:yimby --agent " + w.agent + " --worktree new-top-level --name " + w.key + S.suffix + " --comment \"orchestration-plugin run:" + S.orch.run + "\"" });
+    });
+    S.term.push({ c: "m", t: "curl -s $ORCA_ORCH_URL/say -d '{\"kind\":\"progress\",…}'" });
+    S.term.push({ c: "m", t: "waiting for worker_done…" });
+    S.reports.push({ who: "ai", t: "Started 4 workers, one per PR, each in its own worktree. The panel will send CI failures and review comments to the owner." });
+    S.orch.status = "waiting"; S.polling = true; S.view = "board";
+    log("worker-start ×4 · reference add ×4 (PR links on each workspace)");
+    toast("4 workers started", "Watching their PRs every " + S.interval + "s");
+    render();
+  }, 1100);
+}
+
+function sendTask(text) {
+  if (!text.trim()) return;
+  if (!S.orch) { startOrchestrator(text.trim()); return; }
+  var t = text.trim();
+  if (S.orch.status === "working") { S.queued.push(t); log("orchestrator is working · held in the panel"); render(); return; }
+  deliver(t);
+}
+function deliver(t) {
+  S.reports.push({ who: "you", t: t });
+  S.term.push({ c: "c", t: "› " + t });
+  S.orch.status = "working";
+  log("terminal.sendText → hidden orchestrator");
+  render();
+  setTimeout(function () {
+    S.reports.push({ who: "ai", t: "On it: “" + t.slice(0, 60) + "”." });
+    S.term.push({ c: "m", t: "curl -s $ORCA_ORCH_URL/say -d '{\"kind\":\"progress\",…}'" });
+    S.orch.status = "waiting";
+    render();
+    var next = S.queued.shift();
+    if (next) setTimeout(function () { deliver(next); }, 500);
+  }, 2600);
+}
+
+function ev(kind) {
+  if (!S.workers.length && kind !== "gate") { toast("No workers yet", "Start a task first, or use “Skip to”."); return; }
+  clock++;
+  var w;
+  if (kind === "ci") {
+    w = W("hotkey");
+    if (w.state === "needs" && w.attempts >= S.attempts) { toast("Not sent", "bug hotkey hit the attempt limit; it's waiting for you"); return; }
+    w.attempts++;
+    if (w.attempts > S.attempts) w.attempts = S.attempts;
+    if (w.attempts >= S.attempts && w.state === "fixing") {
+      w.state = "needs"; w.detail = "CI still red after " + S.attempts + " attempts · Retry or take over";
+      toast("bug hotkey needs you", "CI failed " + S.attempts + " times on Expo jest 3/3");
+      log("attempt limit hit · not sent again");
+    } else {
+      w.state = "fixing"; w.detail = "CI red: Expo jest 3/3 · attempt " + w.attempts + "/" + S.attempts;
+      log("gh run view --log-failed · orchestration send --to dispatch:" + w.key);
+      S.term.push({ c: "y", t: "! #4547 CI failed → " + wname(w) + " (" + w.attempts + "/" + S.attempts + ")" });
+    }
+  } else if (kind === "review") {
+    w = W("calendar"); w.state = "fixing"; w.detail = "2 review threads sent"; log("2 unresolved threads → dispatch:calendar");
+    S.term.push({ c: "y", t: "! #4545 2 review threads → " + wname(w) });
+  } else if (kind === "conflict") {
+    w = W("settings"); w.state = "fixing"; w.detail = "Merge conflict with main · told to merge origin/main"; log("mergeable=CONFLICTING → dispatch:settings");
+    S.term.push({ c: "y", t: "! #4551 conflict → " + wname(w) });
+  } else if (kind === "green") {
+    w = W("hotkey"); w.state = "ready"; w.attempts = 0; w.detail = "Ready to merge"; toast("#4547 ready for you", "Green · 0 threads · mergeable");
+  } else if (kind === "ready") {
+    w = W("chatscreen"); w.draft = false; w.state = "ready"; w.detail = "Ready to merge"; toast("#4546 ready for you", "Green · 0 threads · mergeable");
+  } else if (kind === "push") {
+    S.workers.forEach(function (x) { if (x.state === "fixing") { x.state = "watching"; x.detail = "Pushed a fix · CI running"; } });
+    log("new head SHA seen · back to Watching");
+  } else if (kind === "gate") {
+    if (!S.workers.length) { toast("No workers yet"); return; }
+    w = W("calendar"); w.state = "needs"; w.detail = "Keep the month rail on iPad?"; w.gate = { q: "Keep the month rail on iPad?", opts: ["Yes", "No"] };
+    S.reports.push({ who: "ai", t: "#4545 needs a decision from you: keep the month rail on iPad?", q: "calendar" });
+    S.term.push({ c: "y", t: "? gate-create #4545: keep the month rail on iPad? [Yes/No]" });
+    log("gate-create (orchestrator) · plugin read gate-list");
+    toast("A decision needs you", "#4545: keep the month rail on iPad?");
+  } else if (kind === "merge") {
+    w = W("hotkey");
+    if (S.guardOn) { S.banner = { kind: "blocked", who: wname(w), cmd: "gh pr merge 4547" }; S.blocks++; log("agent.tool.before → deny"); w.state = "needs"; w.detail = "Tried to merge · blocked"; }
+    else { S.banner = { kind: "attempted", who: wname(w), cmd: "gh pr merge 4547" }; log("guard off · not blocked"); }
+  } else if (kind === "mergeOther") {
+    w = W("settings"); S.banner = { kind: "attempted", who: wname(w) + " (Gemini)", cmd: "gh pr merge 4551" }; log("agent.tool.after only · Gemini can't be blocked");
+  }
+  if (w) w.updated = clock;
+  render();
+}
+
+function groupOf(w) { if (w.state === "needs") return "needs"; if (w.state === "fixing") return "fixing"; if (w.state === "ready") return "ready"; return "watching"; }
+var GROUPS = [["needs", "Needs you"], ["fixing", "Fixing"], ["watching", "Watching"], ["ready", "Ready for you"]];
+var DOT = { needs: "bg-warn", fixing: "bg-bad", watching: "bg-info", ready: "bg-ok" };
+function needsCount() { return S.workers.filter(function (w) { return groupOf(w) === "needs"; }).length; }
+
+function rowMenu(w) {
+  if (S.menu !== w.key) return "";
+  if (S.confirmRm === w.key) return '<div class="menu" onclick="event.stopPropagation()"><div style="padding:6px 8px;font-size:12px">Remove the worktree for <b>' + esc(wname(w)) + '</b>? Its branch and PR stay on GitHub.</div><div style="display:flex;gap:6px;padding:4px 8px 6px"><button class="btn danger" onclick="act(\'rmyes\',\'' + w.key + '\')">Remove</button><button class="btn" onclick="act(\'rmno\',\'' + w.key + '\')">Cancel</button></div></div>';
+  var items = [["open", "i-ext", "Details"], ["diff", "i-diff", "Diff"], ["term", "i-term", "Terminal"], ["msg", "i-msg", "Message worker"], ["retry", "i-retry", "Retry fix"], null, ["keep", "i-pin", w.kept ? "Don't keep open" : "Keep open"], ["stop", "i-stop", "Stop worker"], ["rm", "i-trash", "Remove worktree…"]];
+  return '<div class="menu" onclick="event.stopPropagation()">' + items.map(function (i) { return i ? '<button onclick="act(\'' + i[0] + '\',\'' + w.key + '\')"><svg><use href="#' + i[1] + '"/></svg>' + i[2] + '</button>' : "<hr>"; }).join("") + "</div>";
+}
+function gateBtns(w) {
+  if (!w.gate) return "";
+  return '<div class="gatebtns" onclick="event.stopPropagation()">' + w.gate.opts.map(function (o) { return '<button class="btn" onclick="act(\'gate\',\'' + w.key + '\',\'' + o + '\')">' + o + "</button>"; }).join("") + '<button class="btn ghost" onclick="act(\'view\',\'chat\')">Discuss in chat</button></div>';
+}
+function rowHTML(w) {
+  var tags = (w.draft ? '<span class="tag">draft</span>' : "") + (w.kept ? '<span class="tag">kept open</span>' : "") + (w.stopped ? '<span class="tag">stopped</span>' : "") + (w.agent !== "claude" ? '<span class="tag">' + agentOf(w.agent).label + "</span>" : "");
+  return '<div class="item" onclick="act(\'open\',\'' + w.key + '\')"><span class="dot ' + DOT[groupOf(w)] + '"></span><div class="mainc"><div class="l1"><span class="name">' + esc(wname(w)) + '</span><span class="num">#' + w.pr + "</span>" + tags + '</div><div class="l2">' + esc(w.detail) + "</div>" + gateBtns(w) + '</div><button class="ib" title="More" onclick="event.stopPropagation();act(\'menu\',\'' + w.key + '\')"><svg><use href="#i-more"/></svg></button>' + rowMenu(w) + "</div>";
+}
+function cardHTML(w) {
+  return '<div class="kt" onclick="act(\'open\',\'' + w.key + '\')"><div style="display:flex;gap:4px;align-items:flex-start"><span class="name" style="flex:1">' + esc(wname(w)) + '</span><button class="ib" style="width:20px;height:20px" onclick="event.stopPropagation();act(\'menu\',\'' + w.key + '\')"><svg style="width:14px;height:14px"><use href="#i-more"/></svg></button></div><div class="l2">' + esc(w.detail) + "</div>" + gateBtns(w) + '<div class="bdg"><span class="dot ' + DOT[groupOf(w)] + '"></span>#' + w.pr + (w.draft ? " · draft" : "") + "</div>" + rowMenu(w) + "</div>";
+}
+
+function header(showPlus) {
+  var surf = S.orch ? S.orch.surface : surfaceFor(S.agent);
+  var nc = needsCount();
+  return '<div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span>' + (showPlus ? '<button class="ib" title="New task" onclick="act(\'newtask\')"><svg><use href="#i-plus"/></svg></button>' : "") +
+    '<span class="seg"><button class="' + (S.view === "chat" ? "on" : "") + '" onclick="act(\'view\',\'chat\')"><svg style="width:12px;height:12px"><use href="#' + (surf === "terminal" ? "i-term" : "i-chat") + '"/></svg>' + (surf === "terminal" ? "Terminal" : "Chat") + '</button><button class="' + (S.view === "board" ? "on" : "") + '" onclick="act(\'view\',\'board\')"><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board' + (S.view === "chat" && nc ? ' <span class="redot"></span>' : "") + "</button></span>" +
+    '<button class="ib" title="Settings" onclick="act(\'settings\')"><svg><use href="#i-gear"/></svg></button></div>';
+}
+
+function renderFirstRun() {
+  var inst = AGENTS.filter(function (a) { return a.installed; }), rest = AGENTS.filter(function (a) { return !a.installed; });
+  var a = agentOf(S.agent);
+  function arow(x) { return '<div class="agentrow ' + (x.installed ? "" : "dis ") + (S.agent === x.id ? "on" : "") + '" ' + (x.installed ? 'onclick="act(\'pickAgent\',\'' + x.id + '\')"' : "") + '><span style="font-weight:560;width:110px">' + x.label + '</span><span class="muted small" style="flex:1;font-family:ui-monospace,Menlo,monospace">' + x.cmd + '</span><span class="small muted">' + (x.installed ? (x.chat ? "Chat · CLI" : "CLI") : "not installed") + "</span></div>"; }
+  return '<div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span></div><div style="padding:0 14px 14px;overflow:auto">' +
+    '<div class="muted small" style="margin:2px 0 6px">Orchestrator agent · ' + inst.length + " detected</div>" + inst.map(arow).join("") +
+    '<details style="margin:6px 0 10px"><summary class="muted small" style="cursor:pointer">Not installed (' + rest.length + " shown of 39)</summary>" + rest.map(arow).join("") + "</details>" +
+    '<div class="muted small" style="margin:8px 0 6px">How should the panel show it?</div><span class="seg">' +
+    [["chat", "Chat"], ["terminal", "Terminal"]].map(function (o) { return '<button class="' + (S.surface === o[0] ? "on" : "") + '" onclick="act(\'surf\',\'' + o[0] + '\')">' + o[1] + "</button>"; }).join("") + "</span>" +
+    '<div class="small muted" style="margin-top:6px">It runs hidden in the background either way, and never opens as a tab.</div>' +
+    '<div class="muted small" style="margin-top:12px">Change either later in Settings → Plugins.</div><div style="margin-top:12px"><button class="btn pri" onclick="act(\'finishFirst\')">Start</button></div></div>';
+}
+
+function renderChat() {
+  var h = header(false);
+  var surf = S.orch ? S.orch.surface : surfaceFor(S.agent);
+  var q = S.queued.length ? '<div class="queued">' + S.queued.length + " message" + (S.queued.length > 1 ? "s" : "") + " queued · sends when the orchestrator finishes its turn</div>" : "";
+  if (!S.orch) {
+    return h + '<div class="empty"><div><div style="font-weight:600;margin-bottom:6px">What should get done?</div><div class="muted small">I\'ll plan it, start a worker per piece in its own worktree, and watch their PRs until they\'re ready for you.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;align-items:center"><button class="btn ghost" onclick="act(\'sugg\',\'Close out my open PRs to merge-ready\')">Close out my open PRs</button><button class="btn ghost" onclick="act(\'sugg\',\'Fix the failing CI on main\')">Fix the failing CI on main</button></div></div></div>' + compose("Describe a task…", "Send");
+  }
+  var st = { working: ["bg-info", "Working…"], waiting: ["bg-ok", "Waiting for workers"], done: ["bg-mute", "Done"] }[S.orch.status];
+  var status = '<div class="small muted" style="display:flex;align-items:center;gap:6px;padding:0 14px 6px"><span class="dot ' + st[0] + '" style="margin:0;width:7px;height:7px"></span>' + agentOf(S.orch.agent).label + " orchestrator · " + st[1] + '<span class="sp"></span>run ' + S.orch.run + "</div>";
+  if (surf === "terminal") {
+    return h + status + '<div class="term" id="termbox">' + S.term.map(function (l) { return '<div class="' + l.c + '">' + esc(l.t) + "</div>"; }).join("") + "</div>" + q + compose("Type to the orchestrator…", "Send");
+  }
+  var msgs = S.reports.map(function (r) {
+    if (r.who === "you") return '<div class="msg me">' + esc(r.t) + "</div>";
+    var w = r.q && W(r.q);
+    var btns = w && w.gate ? '<div class="gatebtns">' + w.gate.opts.map(function (o) { return '<button class="btn" onclick="act(\'gate\',\'' + w.key + '\',\'' + o + '\')">' + o + "</button>"; }).join("") + "</div>" : "";
+    return '<div class="msg ai">' + esc(r.t) + btns + "</div>";
+  }).join("");
+  return h + status + '<div class="chatmsg" id="chatbox" style="flex:1;overflow:auto">' + msgs + "</div>" + q + compose("Message the orchestrator, or describe a new task…", "Send");
+}
+function compose(ph, label) { return '<div class="compose"><textarea id="ta" placeholder="' + ph + '"></textarea><div class="bar2"><span class="pill">' + agentOf(S.agent).cmd + '</span><span class="sp"></span><button class="btn pri" onclick="act(\'send\')"><svg style="width:13px;height:13px"><use href="#i-send"/></svg>' + label + "</button></div></div>"; }
+
+function renderBoard() {
+  var h = header(true);
+  if (!S.workers.length) return h + '<div class="empty"><div class="muted small">No workers yet.<br>Press + or switch to Chat to start a task.</div></div>' + banner();
+  var narrow = '<div class="narrow-only">' + GROUPS.map(function (g) { var ws = S.workers.filter(function (w) { return groupOf(w) === g[0]; }); return '<div class="grp-h">' + g[1] + ' <span class="n">' + ws.length + "</span></div>" + ws.map(rowHTML).join(""); }).join("") + "</div>";
+  var wide = '<div class="wide-only kb">' + GROUPS.map(function (g) { var ws = S.workers.filter(function (w) { return groupOf(w) === g[0]; }); return '<div class="kc"><div class="kh">' + g[1].replace(" for you", "") + ' <span class="n">' + ws.length + "</span></div>" + ws.map(cardHTML).join("") + "</div>"; }).join("") + "</div>";
+  return h + narrow + wide + '<div class="sp"></div>' + banner();
+}
+function banner() {
+  if (!S.banner) return "";
+  var b = S.banner;
+  return '<div class="guard ' + (b.kind === "attempted" ? "att" : "") + '"><svg><use href="#i-shield"/></svg><div style="flex:1"><b>' + (b.kind === "blocked" ? "Blocked" : "Attempted") + "</b> " + esc(b.who) + " tried <code>" + esc(b.cmd) + "</code>. " + (b.kind === "blocked" ? "Merging is yours." : "This agent can't be blocked; check the PR.") + '</div><button class="ib" onclick="act(\'dismiss\')"><svg><use href="#i-x"/></svg></button></div>';
+}
+function renderFoot() {
+  var f = document.getElementById("foot");
+  var watch = S.polling ? '<span><span class="d bg-ok"></span>Polling GitHub · ' + S.interval + "s</span>" : '<span><span class="d bg-mute"></span>Not watching any PRs</span>';
+  var g = S.guardOn ? '<span><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> ' + (S.blocks ? S.blocks + " block" + (S.blocks > 1 ? "s" : "") + " today" : "Merge guard on") + "</span>" : '<span class="c-bad"><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> Merge guard off</span>';
+  f.innerHTML = watch + g;
+}
+
+function renderMain() {
+  document.getElementById("tabbar").innerHTML = '<span class="on">yimby</span>';
+  document.getElementById("mbody").innerHTML = '<div style="max-width:520px"><div style="font-weight:650;font-size:15px;margin-bottom:6px">yimby</div><div class="muted small">Orca\'s main area, untouched by the plugin. It never opens a tab here: the orchestrator, worker details, terminals, diffs and settings all open inside the side panel. Worker worktrees still appear in Orca\'s own left sidebar, as any worktree does.</div></div>';
+}
+function renderDetail() {
+  var w = W(S.detail);
+  if (!w) { S.detail = null; return renderBoard(); }
+  var dt = S.detailTab || "activity";
+  var checks = w.key === "hotkey" && w.state !== "ready" && w.attempts ? [["c-bad", "✕", "Expo jest 3/3", "failed"], ["c-ok", "✓", "Web + API", "passed"]] : w.state === "ready" ? [["c-ok", "✓", "All 6 checks", "passed"]] : [["muted", "…", "6 checks", "running"]];
+  var threads = w.key === "calendar" && w.state === "fixing" ? 2 : 0;
+  var meter = '<span style="display:inline-flex;gap:3px;vertical-align:middle">' + Array.apply(null, Array(S.attempts)).map(function (_, i) { return '<i style="width:14px;height:4px;border-radius:2px;display:block;background:' + (i < w.attempts ? "var(--warn)" : "var(--track)") + '"></i>'; }).join("") + "</span>";
+  var body;
+  if (dt === "terminal") {
+    body = '<div class="term" style="min-height:220px"><div class="m">' + agentOf(w.agent).cmd + " · " + esc(w.key + S.suffix) + " · read-only mirror</div>" + (w.attempts ? '<div class="y">[orchestration] CI failed: Expo jest 3/3 (attempt ' + w.attempts + ")</div><div>Reading the failing test log…</div><div>Fixing the timeout in projects-connection-invite.test.ts</div>" : "<div>Working on the task…</div>") + "</div>";
+  } else if (dt === "diff") {
+    body = '<div style="padding:0 12px"><div class="small muted" style="margin-bottom:6px">3 files changed · +42 −9 · from gh pr diff ' + w.pr + '</div><div class="term" style="margin:0;min-height:200px"><div class="c">src/hotkeys/useBugReportHotkey.ts</div><div class="g">+ export function useBugReportHotkey() {</div><div class="g">+   return useHotkey("mod+shift+b", openBugReport)</div><div class="r">- registerHotkey("cmd+shift+b")</div><div class="c">src/app/layout.tsx</div><div class="g">+ useBugReportHotkey()</div></div></div>';
+  } else {
+    body = '<div style="padding:0 14px"><div class="grp-h" style="padding:6px 0 4px">Checks</div>' + checks.map(function (c) { return '<div style="display:flex;gap:8px;font-size:12.5px;padding:2px 0"><span class="' + c[0] + '" style="width:14px">' + c[1] + '</span><span style="flex:1">' + c[2] + '</span><span class="muted small">' + c[3] + "</span></div>"; }).join("") +
+      '<div class="grp-h" style="padding:10px 0 4px">Review threads</div><div style="font-size:12.5px">' + (threads ? '“Month rail clips on iPad mini” · “Use tokens for spacing”' : '<span class="muted">None open</span>') + "</div>" +
+      '<div class="grp-h" style="padding:10px 0 4px">Fix attempts</div><div style="font-size:12.5px">' + meter + " " + w.attempts + "/" + S.attempts + "</div>" +
+      '<div class="grp-h" style="padding:10px 0 4px">Last sent to the worker</div><div class="small muted">' + esc(w.detail) + "</div></div>";
+  }
+  return '<div class="hd"><button class="ib" title="Back to Board" onclick="act(\'back\')"><svg style="transform:rotate(180deg)"><use href="#i-send"/></svg></button><div style="flex:1;min-width:0"><div class="name" style="font-weight:650">' + esc(wname(w)) + '</div><div class="small muted">#' + w.pr + " · " + esc(w.branch) + " · " + agentOf(w.agent).label + '</div></div><span class="dot ' + DOT[groupOf(w)] + '" style="margin:0"></span></div>' +
+    '<div style="padding:0 12px 8px;display:flex;gap:6px;flex-wrap:wrap"><span class="seg">' + [["activity", "Status"], ["terminal", "Terminal"], ["diff", "Diff"]].map(function (t) { return '<button class="' + (dt === t[0] ? "on" : "") + '" onclick="act(\'dtab\',\'' + t[0] + '\')">' + t[1] + "</button>"; }).join("") + "</span></div>" +
+    '<div style="flex:1;overflow:auto">' + body + "</div>" + gateBtns(w).replace('class="gatebtns"', 'class="gatebtns" style="padding:0 14px"') +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px 0"><button class="btn" onclick="act(\'retry\',\'' + w.key + '\')"><svg style="width:12px;height:12px"><use href="#i-retry"/></svg>Retry fix</button><button class="btn" onclick="act(\'keep\',\'' + w.key + '\')"><svg style="width:12px;height:12px"><use href="#i-pin"/></svg>' + (w.kept ? "Unkeep" : "Keep open") + '</button><button class="btn" onclick="act(\'stop\',\'' + w.key + '\')"><svg style="width:12px;height:12px"><use href="#i-stop"/></svg>Stop</button><button class="btn" onclick="act(\'ghpr\',\'' + w.key + '\')"><svg style="width:12px;height:12px"><use href="#i-ext"/></svg>PR on GitHub</button></div>' +
+    '<div class="compose"><textarea id="ta" placeholder="Message ' + esc(wname(w)) + '…"></textarea><div class="bar2"><span class="small muted">via orchestration send</span><span class="sp"></span><button class="btn pri" onclick="act(\'msgsend\',\'' + w.key + '\')"><svg style="width:13px;height:13px"><use href="#i-send"/></svg>Send</button></div></div>';
+}
+function renderSettingsPanel() {
+  return '<div class="hd"><button class="ib" title="Back" onclick="act(\'back\')"><svg style="transform:rotate(180deg)"><use href="#i-send"/></svg></button><span class="ttl">Settings</span></div><div class="pset" style="padding:0 14px 14px;overflow:auto">' + settingsHTML() + "</div>";
+}
+function settingsHTML() {
+  var opts = AGENTS.filter(function (a) { return a.installed; }).map(function (a) { return '<option value="' + a.id + '"' + (S.agent === a.id ? " selected" : "") + ">" + a.label + "</option>"; }).join("");
+  return '<div class="set">' +
+    row("Chat style", "How the panel shows the orchestrator. It always runs hidden.", '<select onchange="act(\'surf\',this.value)"><option value="chat"' + (S.surface === "chat" ? " selected" : "") + '>Chat</option><option value="terminal"' + (S.surface === "terminal" ? " selected" : "") + ">Terminal</option></select>") +
+    row("Orchestrator agent", "Runs the plan and starts workers", '<select onchange="act(\'pickAgent\',this.value)">' + opts + "</select>") +
+    row("Default worker agent", "The orchestrator can still pick per task", '<select>' + opts + "</select>") +
+    row("Worker name suffix", "Passed as --name to every worker", '<input value="' + esc(S.suffix) + '" oninput="act(\'suffix\',this.value)" style="width:90px">') +
+    row("Check GitHub every", "Uses your gh login; no token needed", '<select onchange="act(\'interval\',this.value)">' + [30, 60, 120, 300].map(function (s) { return "<option" + (S.interval == s ? " selected" : "") + ' value="' + s + '">' + s + " seconds</option>"; }).join("") + "</select>") +
+    row("Fix attempts before asking you", "Per failure, then the PR moves to Needs you", '<select onchange="act(\'attempts\',this.value)">' + [1, 2, 3, 5].map(function (s) { return "<option" + (S.attempts == s ? " selected" : "") + ">" + s + "</option>"; }).join("") + "</select>") +
+    row("Merge guard", "Blocks merges, force-pushes and pushes to main for the panel's Claude agents", '<span class="seg"><button class="' + (S.guardOn ? "on" : "") + '" onclick="act(\'guard\',1)">On</button><button class="' + (S.guardOn ? "" : "on") + '" onclick="act(\'guard\',0)">Off</button></span>') +
+    row("Nightly sweep", "An Orca automation re-checks every panel PR at 2am", '<span class="seg"><button>On</button><button class="on">Off</button></span>') + "</div>";
+  function row(k, d, c) { return '<div class="row"><div><div class="k">' + k + '</div><div class="d">' + d + "</div></div>" + c + "</div>"; }
+}
+function renderNav() {
+  var nav = '<div class="proj">yimby</div><div class="ws ' + (S.mainTab === "home" ? "on" : "") + '" onclick="act(\'tab\',\'home\')"><span class="d bg-mute"></span>main</div>';
+  S.workers.forEach(function (w) { nav += '<div class="ws" style="padding-left:20px;cursor:default"><span class="d ' + DOT[groupOf(w)] + '"></span>' + esc(wname(w)) + "</div>"; });
+  nav += '<div class="proj" style="margin-top:10px">alcove</div><div class="ws"><span class="d bg-mute"></span>main</div>';
+  document.getElementById("lnav").innerHTML = nav;
+}
+
+function render() {
+  var p = document.getElementById("panel");
+  var keep = document.getElementById("ta"); var draft = keep ? keep.value : "";
+  p.innerHTML = S.firstRun ? renderFirstRun() : S.showSettings ? renderSettingsPanel() : S.detail ? renderDetail() : (S.view === "board" ? renderBoard() : renderChat());
+  var ta = document.getElementById("ta"); if (ta && draft) ta.value = draft;
+  var tb = document.getElementById("termbox"); if (tb) tb.scrollTop = tb.scrollHeight;
+  var cb = document.getElementById("chatbox"); if (cb) cb.scrollTop = cb.scrollHeight;
+  renderFoot(); renderMain(); renderNav();
+  document.getElementById("agentSel").value = S.agent;
+  document.getElementById("surf").value = S.surface;
+  document.querySelectorAll("[data-ev]").forEach(function (b) { b.disabled = S.firstRun || !S.orch; });
+}
+
+function act(kind, a, b) {
+  if (kind !== "menu" && kind !== "rm" && kind !== "rmno") { S.menu = null; S.confirmRm = null; }
+  var w = a && W(a);
+  switch (kind) {
+    case "view": S.view = a; S.detail = null; S.showSettings = false; break;
+    case "pickAgent": S.agent = a; break;
+    case "surf": S.surface = a; if (S.orch) S.orch.surface = a; break;
+    case "finishFirst": S.firstRun = false; S.view = "chat"; log("first run saved · Chat style=" + S.surface + " · agent=" + S.agent); break;
+    case "sugg": var ta = document.getElementById("ta"); if (ta) ta.value = a; break;
+    case "send": var t = document.getElementById("ta"); var v = t ? t.value : ""; if (t) t.value = ""; sendTask(v); return;
+    case "termsend": var t2 = document.getElementById("ta"); if (t2 && t2.value.trim()) { S.term.push({ c: "c", t: "› " + t2.value }); log("terminal send → orchestrator"); t2.value = ""; } break;
+    case "newtask": S.view = "chat"; S.detail = null; S.showSettings = false; render(); setTimeout(function () { var x = document.getElementById("ta"); if (x) x.focus(); }, 0); return;
+    case "settings": S.showSettings = true; S.detail = null; break;
+    case "tab": S.mainTab = a; break;
+    case "open": S.detail = a; S.detailTab = "activity"; log("worker details in the panel · worker-show " + w.key); break;
+    case "back": if (S.showSettings) S.showSettings = false; else S.detail = null; break;
+    case "dtab": S.detailTab = a; log(a === "terminal" ? "terminal read (worker, read-only mirror)" : a === "diff" ? "gh pr diff" : "worker-show"); break;
+    case "msgsend": var mt = document.getElementById("ta"); if (mt && mt.value.trim()) { log("orchestration send --to dispatch:" + w.key + " · " + mt.value.trim()); toast("Sent to " + wname(w), "Arrives when its turn ends"); mt.value = ""; } break;
+    case "ghpr": log("shell.openExternal github.com/…/pull/" + w.pr + " (browser, not an Orca tab)"); toast("Opens in your browser", "PR #" + w.pr); break;
+    case "menu": S.menu = S.menu === a ? null : a; S.confirmRm = null; break;
+    case "diff": S.detail = a; S.detailTab = "diff"; log("gh pr diff " + w.pr + " · in the panel"); break;
+    case "term": S.detail = a; S.detailTab = "terminal"; log("terminal read · " + w.key + " · in the panel"); break;
+    case "msg": S.detail = a; S.detailTab = "activity"; render(); setTimeout(function () { var x = document.getElementById("ta"); if (x) x.focus(); }, 0); return;
+    case "retry": w.attempts = 0; w.state = "fixing"; w.detail = "Retrying: CI log re-sent · attempt 1/" + S.attempts; w.attempts = 1; log("attempt counter reset · re-sent"); break;
+    case "keep": w.kept = !w.kept; log("orchestration worker-keep-open · " + w.key); break;
+    case "stop": w.stopped = true; w.state = "needs"; w.detail = "Stopped by you"; log("orchestration worker-stop · " + w.key); break;
+    case "rm": S.menu = a; S.confirmRm = a; break;
+    case "rmno": S.menu = null; S.confirmRm = null; break;
+    case "rmyes": S.workers = S.workers.filter(function (x) { return x.key !== a; }); if (S.detail === a) S.detail = null; log("worktree rm · " + a); toast("Worktree removed", "Branch and PR stay on GitHub"); break;
+    case "gate": w.gate = null; w.state = "fixing"; w.detail = "You answered “" + b + "” · worker continuing"; S.reports.push({ who: "you", t: "Decision on #" + w.pr + ": " + b }); log("orchestration gate-resolve · " + b); break;
+    case "dismiss": S.banner = null; break;
+    case "suffix": S.suffix = a; break;
+    case "interval": S.interval = +a; break;
+    case "attempts": S.attempts = +a; break;
+    case "guard": S.guardOn = !!a; break;
+  }
+  render();
+}
+
+document.addEventListener("click", function (e) { if (S.menu && !e.target.closest(".menu") && !e.target.closest(".ib")) { S.menu = null; S.confirmRm = null; render(); } });
+document.getElementById("w").addEventListener("input", function (e) { document.getElementById("right").style.width = e.target.value + "px"; document.getElementById("wv").textContent = e.target.value; });
+document.getElementById("surf").addEventListener("change", function (e) { act("surf", e.target.value); });
+document.getElementById("agentSel").innerHTML = AGENTS.filter(function (a) { return a.installed; }).map(function (a) { return '<option value="' + a.id + '">' + a.label + (a.chat ? "" : " (CLI only)") + "</option>"; }).join("");
+document.getElementById("agentSel").addEventListener("change", function (e) { act("pickAgent", e.target.value); });
+document.getElementById("reset").addEventListener("click", function () { S = fresh(); document.getElementById("log").textContent = ""; render(); });
+document.getElementById("skip").addEventListener("click", function () { S = fresh(); S.firstRun = false; startOrchestrator("Close out 4545, 4546, 4547, 4551 to merge-ready"); });
+document.querySelectorAll("[data-ev]").forEach(function (b) { b.addEventListener("click", function () { ev(b.dataset.ev); }); });
+document.getElementById("right").style.width = "400px";
+render();
+</script>
+</body>
+</html>

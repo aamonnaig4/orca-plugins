@@ -1,0 +1,795 @@
+{
+  "schemaVersion": 1,
+  "commandCount": 334,
+  "commands": [
+    {
+      "command": "agent hooks status",
+      "path": [
+        "agent",
+        "hooks",
+        "status"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Show whether Orca-managed agent status hooks are enabled",
+      "usage": "orca agent hooks status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca agent hooks status",
+        "orca agent hooks status --json"
+      ],
+      "notes": []
+    },
+    {
+      "command": "agent launch",
+      "path": [
+        "agent",
+        "launch"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Start an agent in an existing workspace, as a chat or a terminal",
+      "usage": "orca agent launch --agent <id> [--worktree <selector>] [--prompt <text>] [--model <id>] [--effort <level>] [--surface chat|terminal] [--focus] [--retry-launch <operationId>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent",
+        "worktree",
+        "prompt",
+        "model",
+        "effort",
+        "surface",
+        "focus",
+        "retry-launch"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca agent launch --agent codex --json",
+        "orca agent launch --agent codex --model gpt-6-astra --effort high --prompt \"Write the design doc\" --json",
+        "orca agent launch --agent claude --worktree path:/projects/myapp --focus"
+      ],
+      "notes": [
+        "Starts the agent the way a new agent tab does: as a chat when your Chat | CLI choice for the agent is Chat and the agent and host support it, otherwise as a terminal. The result says which (`outcome.kind`) and why (`receipt.detail`).",
+        "--surface chat|terminal picks for this launch instead of your setting. --surface terminal always runs the agent CLI; --surface chat is refused when Orca can establish before starting anything that this agent cannot open as a chat there. If support cannot be checked, the launch can fall back to a terminal. If chat becomes unavailable after creating a workspace, Orca keeps the workspace, setup and default tabs, then opens a terminal; the receipt explains the fallback.",
+        "--worktree defaults to the native folder workspace or worktree containing the current directory. For a new checkout with its agent, use `orca worktree create --agent`.",
+        "--model takes a provider model id (OMP also takes its model roles and selectors) and --effort a reasoning effort for that model; --effort requires --model. They apply to either surface.",
+        "The tab opens without switching focus; pass --focus to switch to it.",
+        "If the launch reply is lost, re-issue the same command from the same directory on the same host with --retry-launch <operationId> from the error. Never retry as a fresh launch; older hosts require inspecting the workspace first."
+      ]
+    },
+    {
+      "command": "orchestration check",
+      "path": [
+        "orchestration",
+        "check"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Check this agent's messages",
+      "usage": "orca orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--json]\n  default: return the bound Run's oldest unread FIFO batch and mark it handled.\n  --ack: optional; acknowledges a batch from an older Orca that does not mark it.\n  --peek: return only unread messages without marking them read.\n  --all: return recent messages for the handle; does not mark read.\n  --wait: block until a matching message arrives or --timeout-ms expires.\n          Emits JSON keepalive lines to stderr every 15s so the caller can\n          tell the process is alive. `_keepalive` is unrelated to heartbeat\n          messages; `_heartbeat` remains as a deprecated compatibility alias.\n          Filter with `jq \"select(._keepalive|not)\"` when merging streams.",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "run",
+        "ack",
+        "unread",
+        "peek",
+        "all",
+        "types",
+        "format",
+        "wait",
+        "timeout-ms",
+        "retry-request",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "On Windows PowerShell, quote comma-separated type filters, e.g. --types \"worker_done,escalation\".",
+        "--types is the wake condition for --wait; a returned Delivery is always the whole FIFO batch, so it is never filtered by type. Without --wait it has no effect on consuming checks. Only --peek and --all filter their rows.",
+        "--format renders the returned rows as local text only; it never writes to another terminal.",
+        "A consuming check marks the batch it returns as handled, so the next check returns newer mail; no --ack is needed. Several --wait calls may wait on one inbox; waiting reserves nothing, listeners woken by the same arrival get the same Delivery, and --ack of a handled Delivery is a no-op. Consuming checks belong to the agent itself. A script that only watches the inbox must use --peek (including --peek --wait) and must never --ack, or it takes mail the agent never sees. If a check response was lost, rerun it with the --retry-request it printed to get the same batch. To find mail after losing context, run orca orchestration inbox --terminal <mailbox> --limit <n> --full and name the mailbox: run:<run_id> for a coordinator's bound Run, or dispatch:<dispatch_id> for a worker, including mail it read before it bound a helper Run."
+      ]
+    },
+    {
+      "command": "orchestration reply",
+      "path": [
+        "orchestration",
+        "reply"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Reply to a message",
+      "usage": "orca orchestration reply --id <msg_id> --body <text> [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "body",
+        "run",
+        "from",
+        "on",
+        "retry-request",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "A reply to mail from an agent on another server goes back to that server by itself; no flag is needed."
+      ]
+    },
+    {
+      "command": "orchestration reset",
+      "path": [
+        "orchestration",
+        "reset"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Reset one explicit orchestration state scope",
+      "usage": "orca orchestration reset (--all | --tasks | --messages) [--retry-request <id>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "all",
+        "tasks",
+        "messages",
+        "retry-request",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    },
+    {
+      "command": "orchestration run-list",
+      "path": [
+        "orchestration",
+        "run-list"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "List lightweight orchestration Runs",
+      "usage": "orca orchestration run-list [--limit <n>] [--cursor <cursor>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "cursor",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    },
+    {
+      "command": "orchestration send",
+      "path": [
+        "orchestration",
+        "send"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Send an inter-agent message",
+      "usage": "orca orchestration send --subject <text> [--to <run:id|dispatch:id|legacy_handle>] [--on <server>] [--run <run_id>] [--from <handle>] [--body <text>] [--type <type>] [--priority <level>] [--thread-id <id>] [--payload <json>] [--task-id <id>] [--dispatch-id <id>] [--outcome <succeeded|failed>] [--files-modified <csv>] [--report-path <path>] [--phase <text>] [--retry-request <id>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "to",
+        "on",
+        "run",
+        "from",
+        "subject",
+        "body",
+        "type",
+        "priority",
+        "thread-id",
+        "payload",
+        "task-id",
+        "dispatch-id",
+        "dispatch-capability",
+        "retry-request",
+        "outcome",
+        "files-modified",
+        "report-path",
+        "phase",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "Valid --type values: status, dispatch, worker_done, merge_ready, escalation, handoff, decision_gate, question, heartbeat.",
+        "To answer a worker question, use orchestration reply --id <msg_id> --body <text> with the same Orca CLI executable.",
+        "Group addresses (@all, @idle, @codex, ...) reach the live Dispatches of your own Run; a sender in no Run must use run:<id> or dispatch:<id>. @worktree:<id> names one workspace.",
+        "Run groups exclude their owning coordinator; send to run:<id> to raise something with yours. Nested coordinators receive group mail in their child Run mailbox; @worktree:<id> includes workspace coordinators.",
+        "On Windows PowerShell, quote group addresses such as --to \"@all\" or --to \"@worktree:<id>\".",
+        "worker_done and heartbeat are exact-Dispatch signals and cannot target groups; omit --to to use the Dispatch's Run mailbox.",
+        "worker_done requires --outcome succeeded or --outcome failed.",
+        "From a worker, an omitted recipient defaults to its coordinator, also after it finished; mail sent after finishing, worker_done included, leaves the finished task unchanged.",
+        "Use --to dispatch:<id> for attempt-specific coordinator guidance; Orca durably relays it to a connected worker server.",
+        "A worker_done with the active task/dispatch IDs completes that task only from the dispatched pane. When stable pane identity is unavailable, the sender handle must exactly match the dispatch assignee; injected preambles include the correct --from value.",
+        "Prefer --task-id/--dispatch-id/etc. over raw --payload JSON in worker commands; PowerShell strips JSON quotes easily.",
+        "--on <server> mails a terminal or chat agent on a paired server (--to term_\u2026 or orca_session_id:\u2026). Your own Orca carries it, and replies come back to your own check. From an agent, --environment runs the command on that server and delivers no mail."
+      ]
+    },
+    {
+      "command": "orchestration worker-list",
+      "path": [
+        "orchestration",
+        "worker-list"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "List supervised worker terminal resource accounting",
+      "usage": "orca orchestration worker-list [--run <run_id>] [--terminal-state <active|reclaimable|retained|release_pending|release_unknown|released>] [--include-remote] [--on <server>] [--cursor <cursor>] [--limit <1-100>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "run",
+        "terminal-state",
+        "include-remote",
+        "on",
+        "cursor",
+        "limit",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "Terminal state is process accounting and is reported separately from Task status; a completed Task can still own a live terminal.",
+        "A reclaimable worker with resource.autoReleaseAt is released automatically at that time unless it is reused with worker-start --terminal or kept open (worker-keep-open, worker-start --keep-open, or the user).",
+        "Context-only Dispatches created by orchestration dispatch are included as unsupervised with terminal state retained.",
+        "Returns at most 100 local rows, newest first, by default; --include-remote adds connected-server observations when the host supports fleet listing. Continue with the opaque nextCursor value unchanged.",
+        "Without --run the list is scoped to the Run bound to the calling terminal, and to every Run when there is no binding; the receipt reports which in scope.source (flag, bound, or all).",
+        "--on <server> lists that paired server's own workers for your Run there (or all of them without a Run), paged with its own cursor."
+      ]
+    },
+    {
+      "command": "orchestration worker-read",
+      "path": [
+        "orchestration",
+        "worker-read"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Read bounded output from one supervised worker",
+      "usage": "orca orchestration worker-read --dispatch <dispatch_id> [--source <auto|transcript|terminal>] [--cursor <cursor>] [--limit <n>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "source",
+        "cursor",
+        "limit",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "The default auto source uses an exact hook-reported transcript when available and otherwise returns labeled terminal output.",
+        "A Dispatch created by orchestration dispatch reads from its adopted terminal with worker status unsupervised.",
+        "Output stays readable after the terminal is released, including an automatic release after worker_done.",
+        "A returned cursor is pinned to the exact source; start a fresh read if Orca reports source_changed."
+      ]
+    },
+    {
+      "command": "orchestration worker-show",
+      "path": [
+        "orchestration",
+        "worker-show"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Inspect one supervised worker Dispatch",
+      "usage": "orca orchestration worker-show --dispatch <dispatch_id> [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "A Dispatch created by orchestration dispatch is shown as unsupervised and reports the exact adopted terminal when its identity is still provable.",
+        "observation.agentWait names a worker parked on a prompt only a human can answer, with the evidence that proved it (hook, prompt-text, or title). Null means Orca looked and found no wait. An absent field means it never looked \u2014 an older host, an unverifiable worker identity, an unreadable pane, or an agent probe that did not answer in time \u2014 and never means the worker is not waiting. A waiting worker is healthy, not failed."
+      ]
+    },
+    {
+      "command": "orchestration worker-start",
+      "path": [
+        "orchestration",
+        "worker-start"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Start one supervised worker on the Run home or a connected Orca server",
+      "usage": "orca orchestration worker-start (--task <task_id> | --spec <text> | --spec-file <path|->) [--keep-open] [--on <saved-environment>] [--worktree <current|selector|new-child|new-top-level>] (--agent <agent> | --terminal <handle>) [--task-title <text>] [--deps <json_array>] [--parent <task_id>] [--model <id>] [--effort <level>] [--name <name>] [--repo <selector>] [--base-branch <ref>] [--display-name <text>] [--comment <text>] [--setup <run|skip|inherit>] [--retry-of <dispatch_id>] [--timeout-ms <n>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "spec",
+        "spec-file",
+        "keep-open",
+        "task-title",
+        "deps",
+        "parent",
+        "on",
+        "worktree",
+        "name",
+        "repo",
+        "base-branch",
+        "display-name",
+        "comment",
+        "setup",
+        "agent",
+        "model",
+        "effort",
+        "terminal",
+        "retry-of",
+        "timeout-ms",
+        "run",
+        "from",
+        "retry-request",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "With --spec and no bound Run, a coordinator gets a new Run bound to it, named after the Task title; the receipt names the Run it created or joined.",
+        "Current and existing worktrees never rerun setup; a fresh agent terminal is created unless --terminal is explicit.",
+        "When reusing --terminal, pass --worktree for that terminal; current means the coordinator worktree.",
+        "Reusing a settled worker's terminal with --terminal before its autoReleaseAt cancels that automatic release; after it, the start is refused while the release runs.",
+        "A terminal the user kept open takes --terminal work and stays kept open.",
+        "--agent takes an Orca agent id enabled on the worker server, such as claude, codex, cursor, antigravity, muse, zcode, opencode, or opencode2.",
+        "--model supports Claude, Codex, Cursor, Antigravity, Grok, and Muse opaque provider model ids; --effort requires --model. OMP also takes its model roles and selectors (such as @worker or provider/model:level), with --effort as its thinking level. Neither can combine with --terminal. OpenCode model selection requires an existing worktree, a verified execution-host CLI, and an available model; effort is unsupported. Other agents, including zcode, launch with the model from their own config.",
+        "Finished workers close on their own unless started with --keep-open; a worker started in a new worktree (new-child or new-top-level) is kept open, so release it when no one will use its chat.",
+        "New worktrees use agent-first creation; without --setup, setup runs unless the project turns it off. Repository start-immediately runs setup beside the agent; wait-for-setup gates agent readiness and task input.",
+        "New worktrees without --name get the name Orca gives an unnamed workspace; the receipt names it. Servers older than this change still require --name.",
+        "Creation flags (--name, --repo, --base-branch, --display-name, --comment, --setup) are rejected for current/existing worktrees. Use exact --repo on the selected server; project/host convenience routing remains on worktree create.",
+        "How the worker runs follows the user's own setting for new agent tabs; there is no flag for it and no caller needs to ask. A dispatch the setting cannot apply to still starts, so the placement, agent, and launch options passed here are always the ones honoured.",
+        "Drive every worker the same way whichever way it was started: the same orchestration verbs, the same handle. Mail, dispatch, worker-show, worker-read and the whole lifecycle behave identically. The start receipt records which one ran, for operators and telemetry.",
+        "Not every worker has a terminal. Read output with worker-read --source auto or --source transcript, which always work; --source terminal is refused when there is none, and orca terminal verbs do not accept every worker handle. Nothing above needs you to know which kind you have \u2014 the orchestration verbs cover all of them.",
+        "--on selects only the worker server; the Run and this command remain on the current Orca server.",
+        "With --on, use an exact remote selector, new-child or new-top-level (new-child and new-top-level need a remote --repo); new-child nests the server worktree under your workspace, or starts it top-level with a warning when that server is too old to nest across machines. Remote current is invalid.",
+        "--retry-of needs --task naming the failed Task (--spec creates a new one) and does not inherit placement; repeat the intended --on/worktree and --agent/terminal choices.",
+        "--spec-file reads the spec from a file (relative to the current directory) or stdin (-) on this machine, so quotes and backticks need no shell escaping.",
+        "--keep-open keeps the worker open after it finishes, as worker-keep-open does right after start.",
+        "The call exits 0 for ready, and in the concise view for a start whose turn was not yet observed (--full exits 1 for anything but ready). Failed or outcome_unknown exits 1 and JSON includes stage/failedStage, setup, effects, residualResources, and recovery commands when needed."
+      ]
+    },
+    {
+      "command": "orchestration worker-stop",
+      "path": [
+        "orchestration",
+        "worker-stop"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Fence one Dispatch and stop its supervised agent terminal and its helpers",
+      "usage": "orca orchestration worker-stop --dispatch <dispatch_id> [--retry-request <id>] [--json] [--full]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "retry-request",
+        "full"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "A Dispatch created by orchestration dispatch is fenced without closing its unsupervised terminal process.",
+        "processAction closed_agent_terminal means Orca issued the close (do not also run terminal close); stop_unknown exits 1 and may still report it when the agent exit was not proven.",
+        "Also stops every helper it started and theirs, listed in helpers; a helper the user kept open is listed and keeps running.",
+        "Never deletes the worktree, setup terminal, configured tabs, or unrelated processes."
+      ]
+    },
+    {
+      "command": "repo add",
+      "path": [
+        "repo",
+        "add"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Add a project to Orca by filesystem path",
+      "usage": "orca repo add --path <path> [--kind git|folder] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "path",
+        "kind"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca repo add --path /abs/path/to/folder --kind folder --json"
+      ],
+      "notes": [
+        "Defaults to git. Use --kind folder for an ordinary directory, including a parent of separate Git repositories; worktrees attached to a folder workspace appear in its Source Control panel, one section each.",
+        "With --environment, --path must be an absolute path on that Orca server."
+      ]
+    },
+    {
+      "command": "repo hide",
+      "path": [
+        "repo",
+        "hide"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Hide a project from Orca's sidebar",
+      "usage": "orca repo hide --repo <selector> [--host <host>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "host"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca repo hide --repo name:orca --json"
+      ],
+      "notes": [
+        "Only the view changes: open terminals, agents, automations and scripts keep running, and repo list still lists the repo with hiddenAt set.",
+        "Hiding applies to one host's copy; with --host, it picks which copy of a repo set up on several hosts.",
+        "On a paired Orca server the flag lives on that server, so it hides the project for everyone connected to it."
+      ]
+    },
+    {
+      "command": "repo list",
+      "path": [
+        "repo",
+        "list"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "List repos registered in Orca",
+      "usage": "orca repo list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    },
+    {
+      "command": "repo show",
+      "path": [
+        "repo",
+        "show"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Show one registered repo",
+      "usage": "orca repo show --repo <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    },
+    {
+      "command": "skills get",
+      "path": [
+        "skills",
+        "get"
+      ],
+      "aliases": [
+        [
+          "skills",
+          "show"
+        ]
+      ],
+      "argumentMode": "parsed",
+      "summary": "Print a version-matched skill guide as Markdown",
+      "usage": "orca skills get <topic> [--full | --reference <name>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "topic",
+        "full",
+        "reference",
+        "references"
+      ],
+      "positionalArgs": [
+        "topic"
+      ],
+      "examples": [
+        "orca skills get orca-cli",
+        "orca skills get orchestration --full",
+        "orca skills get orchestration --references",
+        "orca skills get orchestration --reference recovery-and-cleanup"
+      ],
+      "notes": [
+        "Reads bundled guide content locally without contacting the Orca runtime.",
+        "Prints the compact guide by default. Use --full to print the full guide with bundled references when provided.",
+        "Use --reference <name> to print one bundled reference alone, which is what an action gate in the compact guide needs; --references lists the available names.",
+        "A reference name may be given bare (recovery-and-cleanup) or as the guide spells it (references/recovery-and-cleanup.md).",
+        "Use --json for a deterministic object containing canonical topic metadata and content."
+      ]
+    },
+    {
+      "command": "terminal list",
+      "path": [
+        "terminal",
+        "list"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "List live Orca-managed terminals",
+      "usage": "orca terminal list [--worktree <selector>] [--limit <n>] [--include-visual-layouts] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "limit",
+        "include-visual-layouts"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "JSON omits visualLayouts by default; pass --include-visual-layouts when machine-readable tab and pane topology is required."
+      ]
+    },
+    {
+      "command": "terminal read",
+      "path": [
+        "terminal",
+        "read"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Read bounded terminal output",
+      "usage": "orca terminal read [--terminal <handle>] [--cursor <n>] [--limit <n>] [--screen] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "cursor",
+        "limit",
+        "screen"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca terminal read --json",
+        "orca terminal read --terminal term_abc123 --cursor 42 --limit 1000 --json",
+        "orca terminal read --terminal term_abc123 --screen --json"
+      ],
+      "notes": [
+        "Omit --terminal to target the active terminal in the current worktree.",
+        "By default this returns accumulated terminal output with escape sequences stripped, not the rendered screen. Any program that repaints a line \u2014 shells, progress bars, TUIs \u2014 comes back as stacked fragments, so one `clear` keystroke by keystroke reads as `cclclecleaclear`, and spaces a prompt draws by moving the cursor are absent.",
+        "Use --screen to read what the terminal actually renders. Prefer it whenever the answer depends on how output looks rather than what was emitted over time; the default is unsuitable for verifying rendered output.",
+        "The result reports source: stream when it is accumulated output, screen when it is the rendered screen, and screen-unavailable when a screen was asked for but none could be rendered and the accumulated output is being returned instead. An absent source means the host predates the field.",
+        "When present, draft is UI-only composer text excluded from tail; never treat it as terminal output or a submitted instruction.",
+        "--screen and --cursor are mutually exclusive: a screen read is the current frame and has no history to page.",
+        "With --json, fields are under result.terminal: handle, status (running | exited | unknown), tail (output lines), tailRows (row-wrap metadata aligned with tail), truncated, limited, oldestCursor, nextCursor, latestCursor, returnedLineCount (lines in tail), source, draft. Fields other than handle, status, tail, truncated, and nextCursor may be absent.",
+        "truncated means requested or older output is no longer retained; limited means the line limit (--limit, default 120 for tail previews) or the size budget cut this response short.",
+        "Use --cursor with the nextCursor value from a previous read to get only new output since that read. nextCursor is null when the terminal has no line cursors to page.",
+        "latestCursor is the end of retained output, not a paging token: after a cursor read, keep paging with nextCursor while limited is true and nextCursor differs from latestCursor.",
+        "Use --limit to request more retained lines for long agent responses; when a tail preview is limited and line cursors are available, page retained output from its start with --cursor <oldestCursor> --limit <n>.",
+        "Useful for capturing the response to a command: read before sending, then read --cursor <prev> after waiting."
+      ]
+    },
+    {
+      "command": "terminal send",
+      "path": [
+        "terminal",
+        "send"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Send input to a live terminal",
+      "usage": "orca terminal send [--terminal <handle>] [--text <text>] [--enter] [--interrupt] [--wait-submit <seconds>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "text",
+        "enter",
+        "interrupt",
+        "wait-submit",
+        "retry-request"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "Without --enter, --text is written to the PTY verbatim, so control bytes pass through (Bash/Zsh: --text $'\\x1b' for Escape, $'\\x15' for Ctrl+U).",
+        "With --enter and without --interrupt, a prompt to a recognized running agent is bracketed-pasted and embedded Escape bytes are made inert.",
+        "For a text-plus-Enter agent prompt, the result separates input acceptance from observed submission and turn start.",
+        "--wait-submit only observes the accepted prompt for the requested duration; timeout returns the queued/input-accepted receipt and never resends.",
+        "After an ambiguous transport failure, reissue the exact command with the reported --retry-request ID. The ID is bound to the prompt payload and exact terminal process incarnation.",
+        "Older hosts accept the legacy raw input but report provider old-host and do not offer idempotent retry or submission observation."
+      ]
+    },
+    {
+      "command": "terminal show",
+      "path": [
+        "terminal",
+        "show"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Show terminal metadata and preview",
+      "usage": "orca terminal show [--terminal <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    },
+    {
+      "command": "terminal switch",
+      "path": [
+        "terminal",
+        "switch"
+      ],
+      "aliases": [
+        [
+          "terminal",
+          "focus"
+        ]
+      ],
+      "argumentMode": "parsed",
+      "summary": "Switch to a terminal tab in the UI",
+      "usage": "orca terminal switch [--terminal <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal"
+      ],
+      "positionalArgs": [],
+      "examples": [
+        "orca terminal switch --terminal term_abc123"
+      ],
+      "notes": [
+        "It changes the terminal the user is looking at; agents should run it only when the user asked to switch.",
+        "With --environment, the desktop app on this machine switches to that server's terminal; a server has no window of its own."
+      ]
+    },
+    {
+      "command": "worktree list",
+      "path": [
+        "worktree",
+        "list"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "List Orca-managed worktrees",
+      "usage": "orca worktree list [--repo <selector>] [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "limit"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "Each row carries the execution host that owns it (`host=`), and the trailing `scope:` line names every host the page covers plus the ones it does not.",
+        "A host named under `not covered` may still have workspaces; an empty answer for it is not evidence that it has none. A paired server is annotated with the `--environment` flag that reaches it; this machine and its SSH targets are reached through the same runtime, so no flag selects them.",
+        "The row cap is shared across hosts, so a host whose rows sort last is not starved out of the page."
+      ]
+    },
+    {
+      "command": "worktree rm",
+      "path": [
+        "worktree",
+        "rm"
+      ],
+      "aliases": [
+        [
+          "worktree",
+          "remove"
+        ],
+        [
+          "worktree",
+          "delete"
+        ]
+      ],
+      "argumentMode": "parsed",
+      "summary": "Remove a Git worktree or a folder workspace entry from Orca",
+      "usage": "orca worktree rm --worktree <selector> [--force] [--delete-branch] [--run-hooks] [--allow-failed-archive-hook] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "force",
+        "delete-branch",
+        "run-hooks",
+        "allow-failed-archive-hook"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": [
+        "Needs an explicit workspace: --worktree current and active are refused, and the error names the selector they resolve to right now, as `git worktree remove` needs a path. For a non-root folder workspace, removes its Orca entry and stops its sessions without deleting the folder or touching Git. The folder project root cannot be removed with this command. For a group folder workspace (folder:<id>, or a path:/name: selector that matches one), Orca forgets it and the folder stays on disk; --delete-branch, --run-hooks and --allow-failed-archive-hook are refused for it.",
+        "Use --worktree \"id:<full-instance-id>\" with the full id from orca worktree list --json to select one folder workspace; several entries can share the same path.",
+        "Repo-defined orca.yaml archive hooks are skipped unless --run-hooks is passed.",
+        "With --run-hooks, a failed archive hook blocks the removal: nothing is stopped, deleted or deregistered, and the command exits non-zero with error code worktree_archive_hook_failed. --force does not waive this.",
+        "Pass --allow-failed-archive-hook to delete anyway after the hook has run and failed; the waived failure is reported back on result.archiveHookOverride. It requires --run-hooks and is rejected without it, because with no hook running there is no failure to waive.",
+        "On newer hosts with branch-choice support, Git worktree removal keeps the local branch, including with --force. Pass --delete-branch to attempt safe branch deletion, including branches that predated the worktree. Branches whose changes Orca cannot prove are already merged are retained. Older hosts keep their existing branch policy and print a warning; keep-by-default and --delete-branch do not apply there. A removal result without branch evidence does not confirm branch deletion."
+      ]
+    },
+    {
+      "command": "worktree show",
+      "path": [
+        "worktree",
+        "show"
+      ],
+      "aliases": [],
+      "argumentMode": "parsed",
+      "summary": "Show one worktree",
+      "usage": "orca worktree show --worktree <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": [],
+      "examples": [],
+      "notes": []
+    }
+  ]
+}

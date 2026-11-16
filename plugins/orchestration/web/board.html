@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Board · Orchestration</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="board.css" />
+    <style>
+      html { background: var(--orca-background); }
+      html.dark body { --orca-background: #0d0e10; --orca-foreground: #ececee; --orca-muted-foreground: #8d9097; --orca-border: rgba(255, 255, 255, 0.09); --orca-primary: #3b82f6; }
+      html.light body { --orca-background: #ffffff; --orca-foreground: #1b1c1f; --orca-muted-foreground: #6b6f76; --orca-border: rgba(0, 0, 0, 0.12); --orca-primary: #2563eb; }
+      body { overflow: auto; font-size: 14px; }
+      .web { min-height: 100vh; display: flex; flex-direction: column; }
+      .web-top { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+      .web-top h1 { margin: 0; font-size: 16px; font-weight: 600; }
+      .web-state { margin-left: auto; font-size: 12px; color: var(--muted-fg); }
+      .web-state.bad { color: var(--attn); }
+      .web-body { flex: 1; display: flex; flex-direction: column; }
+      .web .board { margin: 0; }
+      .web .board-main { cursor: default; }
+      .web .lane-h { font-size: 14px; }
+      .web .lane-cards { padding: 12px; gap: 10px; }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="7" cy="5.5" r="2.2"/><circle cx="7" cy="18.5" r="2.2"/><circle cx="17" cy="8" r="2.2"/><path d="M7 7.7v8.6M17 10.2c0 3.6-4 3.4-10 5"/></symbol>
+      <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="6.5" cy="5.5" r="2.2"/><circle cx="6.5" cy="18.5" r="2.2"/><circle cx="17.5" cy="18.5" r="2.2"/><path d="M6.5 7.7v8.6M17.5 16.3V10a3 3 0 0 0-3-3H12M14 4.5 11.5 7 14 9.5"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V8.5M10 12.5h4"/></symbol>
+    </svg>
+    <div class="web">
+      <header class="web-top"><h1>Board</h1><span class="web-state" id="state">Loading…</span></header>
+      <main class="web-body" id="board"></main>
+    </div>
+    <script src="esc.js"></script>
+    <script src="time.js"></script>
+    <script src="board.js"></script>
+    <script src="board-page.js"></script>
+  </body>
+</html>

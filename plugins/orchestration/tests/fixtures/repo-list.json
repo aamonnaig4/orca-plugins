@@ -1,0 +1,63 @@
+{
+  "id": "9331a0f0-4826-4afd-be95-aedc135166ac",
+  "ok": true,
+  "result": {
+    "repos": [
+      {
+        "id": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "path": "/Users/aamonnaig/Developer/orca-plugins",
+        "displayName": "orca-plugins",
+        "badgeColor": "#737373",
+        "addedAt": 1794774446890,
+        "kind": "git",
+        "externalWorktreeVisibilityLegacy": false,
+        "gitUsername": "aamonnaig4",
+        "repoIcon": {
+          "type": "image",
+          "src": "https://github.com/aamonnaig4.png?size=64",
+          "source": "github",
+          "label": "aamonnaig4/orca-plugins"
+        },
+        "upstream": null,
+        "gitRemoteIdentity": {
+          "canonicalKey": "github.com/aamonnaig4/orca-plugins",
+          "remoteName": "origin",
+          "remoteUrl": "https://github.com/aamonnaig4/orca-plugins.git"
+        },
+        "projectHostSetupMethod": "imported-existing-folder",
+        "hookSettings": {
+          "mode": "auto",
+          "setupRunPolicy": "run-by-default",
+          "setupAgentStartupPolicy": "start-immediately",
+          "scripts": {
+            "setup": "",
+            "archive": ""
+          }
+        },
+        "externalWorktreeVisibility": "hide"
+      },
+      {
+        "id": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+        "path": "/Users/aamonnaig/.orca-orchestration/home",
+        "displayName": "home",
+        "badgeColor": "#737373",
+        "addedAt": 1794778611476,
+        "kind": "folder",
+        "hiddenAt": 1794778616159,
+        "gitUsername": "",
+        "hookSettings": {
+          "mode": "auto",
+          "setupRunPolicy": "run-by-default",
+          "setupAgentStartupPolicy": "start-immediately",
+          "scripts": {
+            "setup": "",
+            "archive": ""
+          }
+        }
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "8bc5d147-0056-44f4-bdfd-a6667c9daacd"
+  }
+}

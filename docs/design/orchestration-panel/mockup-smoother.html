@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design options: orchestration panel</title>
+<style>
+:root {
+  --app-bg: #0d0e10;
+  --app-fg: #ececee;
+  --app-muted: #8d9097;
+  --app-border: rgba(255,255,255,0.1);
+  --app-accent: #3b82f6;
+  --app-radius: 10px;
+  --app-font: system-ui, -apple-system, sans-serif;
+
+  --doc-bg: #f1efe9;
+  --doc-fg: #2b2a27;
+  --doc-muted: #8a877f;
+  --doc-pick: #16a34a;
+  --doc-font: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --doc-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --doc-surface: #ffffff;
+  --doc-line: #0002;
+  --doc-shadow: #0001;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --doc-bg: #161513;
+    --doc-fg: #e9e6df;
+    --doc-muted: #8f8b82;
+    --doc-pick: #22c55e;
+    --doc-surface: #211f1c;
+    --doc-line: #fff2;
+    --doc-shadow: #0006;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 24px 220px; background: var(--doc-bg); color: var(--doc-fg); font: 14px/1.4 var(--doc-font); }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+header h1 { font-size: 20px; margin: 0; }
+.round { font: 600 11px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 3px 8px; border-radius: 99px; }
+.ledger { margin: 0 0 24px; padding: 10px 14px; border-left: 3px solid var(--doc-pick); background: var(--doc-surface); font-size: 13px; }
+.ledger div::before { content: "\2713  "; color: var(--doc-pick); font-weight: 700; }
+.issue { margin: 0 0 40px; }
+.issue h2 { font-size: 16px; margin: 0 0 4px; }
+.issue h2 .num { font-family: var(--doc-mono); color: var(--doc-muted); margin-right: 6px; }
+.said { color: var(--doc-muted); font-size: 12px; margin: 0 0 10px; }
+.said::before { content: "you: "; font-weight: 600; }
+.view { font-size: 12px; margin: 6px 0 0; color: var(--doc-muted); }
+.view::before { content: "my view: "; font-weight: 600; }
+.row { display: flex; gap: 16px; overflow-x: auto; padding: 6px 4px 10px; }
+.col { flex: 0 0 auto; position: relative; border-radius: 12px; padding: 8px; outline: 2px solid transparent; transition: outline-color .12s; }
+.col[data-opt] { cursor: pointer; }
+.col[data-opt]:hover { outline-color: var(--doc-line); }
+.col.picked { outline: 3px solid var(--doc-pick); background: color-mix(in srgb, var(--doc-pick) 8%, transparent); }
+.tick { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--doc-pick); color: #fff; font: 700 14px/24px var(--doc-font); text-align: center; }
+.col.picked .tick { display: block; }
+.cap { margin-top: 8px; font-size: 13px; max-width: 360px; }
+.cap .pick { font: 700 12px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+.cap .cost { display: block; color: var(--doc-muted); font-size: 12px; }
+.now .cap .pick { background: var(--doc-muted); }
+.screen { background: var(--app-bg); color: var(--app-fg); font-family: var(--app-font); border: 1px solid var(--app-border); border-radius: var(--app-radius); overflow: hidden; box-shadow: 0 6px 24px var(--doc-shadow); }
+.phone { width: 393px; min-height: 600px; border-radius: 44px; border: 10px solid #111; }
+textarea.notes { display: block; width: 100%; max-width: 760px; min-height: 40px; margin-top: 6px; padding: 8px; font: 13px var(--doc-font); border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-surface); color: var(--doc-fg); resize: vertical; }
+details.archive { margin: 40px 0; color: var(--doc-muted); }
+#manual { margin-top: 48px; padding: 16px; background: var(--doc-surface); border: 1px dashed var(--doc-line); border-radius: 10px; max-width: 760px; }
+#manual h3 { margin: 0 0 8px; font-size: 14px; }
+#manual textarea { width: 100%; min-height: 90px; font: 13px var(--doc-mono); padding: 8px; border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-bg); color: var(--doc-fg); }
+#legend { font: 12px var(--doc-mono); color: var(--doc-muted); margin: 10px 0 0; white-space: pre-wrap; user-select: all; }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; background: #1c1b19f2; color: #eee; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 12px; z-index: 10; }
+#bar .grp { display: flex; gap: 4px; align-items: center; }
+#bar .grp b { font-family: var(--doc-mono); color: #aaa; margin-right: 2px; }
+#bar button { font: 600 12px var(--doc-mono); border: 1px solid #555; background: #2a2926; color: #ddd; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
+#bar button.on { background: var(--doc-pick); border-color: var(--doc-pick); color: #fff; }
+#bar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#bar input#line { width: 260px; font: 12px var(--doc-mono); background: #000; color: #fff; border: 1px solid #555; border-radius: 5px; padding: 4px 6px; }
+#bar #copy { background: #fff; color: #111; border-color: #fff; }
+#count { font-family: var(--doc-mono); color: #aaa; }
+#toast { color: #8f8; min-width: 60px; }
+</style>
+</head>
+<body data-key="design-options:orchestration-smoother:r2">
+
+<style>
+.m { width: 330px; height: 430px; display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.4; --ok: #4ade80; --work: #60a5fa; --val: #e58bb5; --rev: #f59e0b; --attn: #f5a524; --chip: rgba(255,255,255,.08); --card: rgba(255,255,255,.035); }
+.m.short { height: 300px; }
+.m svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.m a { color: inherit; text-decoration: none; cursor: pointer; }
+.m-hd { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--app-border); color: var(--app-muted); }
+.m-seg { display: inline-flex; background: var(--chip); border-radius: 7px; padding: 2px; }
+.m-seg span { padding: 3px 9px; border-radius: 5px; font-size: 12px; display: inline-flex; gap: 5px; align-items: center; }
+.m-seg .on { background: var(--app-bg); color: var(--app-fg); }
+.m-sp { flex: 1; }
+.m-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.m-end { justify-content: flex-end; }
+.m-ft { flex: none; display: flex; gap: 12px; align-items: center; padding: 6px 10px; border-top: 1px solid var(--app-border); color: var(--app-muted); font-size: 11.5px; }
+.m-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--app-muted); flex: none; }
+.d-work { background: var(--work); } .d-val { background: var(--val); } .d-rev { background: var(--rev); } .d-ok { background: var(--ok); } .d-attn { background: var(--attn); }
+.m-me { align-self: flex-end; background: var(--chip); padding: 6px 10px; border-radius: 13px; max-width: 85%; }
+.m-or { max-width: 100%; }
+.m-or b { font-weight: 650; }
+.m-step { color: var(--app-muted); font-size: 12px; display: flex; gap: 7px; align-items: baseline; }
+.m code { font: 11.5px ui-monospace, Menlo, monospace; background: var(--chip); color: #7ab7ff; padding: 1px 5px; border-radius: 5px; }
+.m-comp { flex: none; margin: 0 10px 10px; border: 1px solid var(--app-border); border-radius: 14px; background: var(--card); padding: 9px 9px 7px 11px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+.m-comp .ph { color: var(--app-muted); min-height: 18px; }
+.m-comp .typed { min-height: 18px; }
+.m-bar { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--app-muted); }
+.m-bar b { color: var(--app-fg); font-weight: 550; }
+.m-send { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; background: var(--app-fg); color: var(--app-bg); display: grid; place-items: center; }
+.m-card { border: 1px solid var(--app-border); border-radius: 9px; background: var(--card); }
+.m-card.attn { border-color: var(--attn); background: rgba(245,158,11,.1); }
+.m-card .t { padding: 8px 10px 6px; font-weight: 600; display: flex; gap: 7px; align-items: center; }
+.m-card .f { padding: 6px 10px; border-top: 1px solid var(--app-border); display: flex; justify-content: space-between; color: var(--app-muted); font-size: 11.5px; }
+.m-card .f .warn { color: var(--attn); } .m-card .f .work { color: var(--work); }
+.m-btn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--app-border); border-radius: 6px; padding: 2px 8px; font-size: 11.5px; font-weight: 500; background: var(--app-bg); }
+.m-btn.pri { background: var(--app-accent); border-color: var(--app-accent); color: #fff; }
+.m-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+.m-lane { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 2px 0; }
+.m-lane i { font-style: normal; color: var(--app-muted); margin-left: auto; }
+.m-strip { flex: none; margin: 0 10px 6px; border: 1px solid var(--app-border); border-radius: 10px; font-size: 11.5px; overflow: hidden; }
+.m-strip .sum { display: flex; align-items: center; gap: 10px; padding: 6px 10px; color: var(--app-muted); }
+.m-strip .sum span { display: inline-flex; align-items: center; gap: 4px; }
+.m-strip .need { color: var(--attn); margin-left: auto; }
+.m-rows { display: none; border-top: 1px solid var(--app-border); }
+.open > .m-rows { display: block; }
+.m-row { display: flex; align-items: center; gap: 8px; padding: 5px 10px; }
+.m-row .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-row .s { color: var(--app-muted); font-size: 11.5px; flex: none; }
+.m-row .s.warn { color: var(--attn); }
+.m-sheet { flex: none; border-top: 1px solid var(--app-border); border-radius: 14px 14px 0 0; background: #15171a; padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 -10px 30px #0008; }
+.m-grab { width: 34px; height: 4px; border-radius: 4px; background: var(--chip); align-self: center; }
+.m-pop { position: absolute; left: 6px; bottom: 34px; width: 230px; border: 1px solid var(--app-border); border-radius: 10px; background: #1a1c20; box-shadow: 0 10px 30px #000a; padding: 4px; font-size: 12px; display: none; z-index: 2; }
+.open > .m-pop, .m-pop.show { display: block; }
+.m-pop div { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 6px; }
+.m-pop div.hi { background: var(--chip); }
+.m-pop i { font-style: normal; color: var(--app-muted); }
+.m-to { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; background: rgba(96,165,250,.14); color: #9cc6ff; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; }
+.m-act { display: flex; align-items: center; gap: 8px; border: 1px solid var(--app-border); border-radius: 9px; padding: 6px 9px; background: var(--card); }
+.m-act .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-act .s { font-size: 11.5px; color: var(--app-muted); flex: none; }
+.m-act .s.work { color: var(--work); } .m-act .s.ok { color: var(--ok); }
+.m-term { font: 11px/1.5 ui-monospace, Menlo, monospace; color: #b9bcc2; padding: 6px 10px; border-top: 1px solid var(--app-border); white-space: pre; overflow: hidden; }
+.m-tabs { display: flex; gap: 14px; padding: 0 10px; border-bottom: 1px solid var(--app-border); color: var(--app-muted); }
+.m-tabs span { padding: 7px 0; } .m-tabs .on { color: var(--app-fg); box-shadow: inset 0 -2px var(--app-fg); }
+.m-pin { flex: none; margin: 0 10px 6px; border: 1px solid var(--attn); background: rgba(245,158,11,.1); border-radius: 10px; padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; }
+.m-pin .h { display: flex; justify-content: space-between; } .m-pin .h i { font-style: normal; color: var(--app-muted); font-size: 11.5px; }
+.m-muted { color: var(--app-muted); }
+.m-steps { font: 600 11px var(--doc-mono); color: var(--doc-muted); margin: 0 0 6px 2px; }
+.why { margin: 0 0 28px; padding: 10px 14px; border-left: 3px solid var(--doc-muted); background: var(--doc-surface); font-size: 13px; max-width: 760px; }
+.why b { display: block; margin-bottom: 4px; }
+.why code { font: 12px var(--doc-mono); color: var(--doc-muted); }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="s-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="s-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+  <symbol id="s-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="s-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+  <symbol id="s-up" viewBox="0 0 24 24"><path d="M12 19V5.5M6 11.5l6-6 6 6"/></symbol>
+  <symbol id="s-back" viewBox="0 0 24 24"><path d="M12 19l-7-7 7-7M19 12H5"/></symbol>
+  <symbol id="s-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></symbol>
+  <symbol id="s-chev" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="s-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></symbol>
+  <symbol id="s-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></symbol>
+  <symbol id="s-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="s-term" viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 18h7"/></symbol>
+</svg>
+
+<header>
+  <span class="round">ROUND 2 · COMPOSED</span>
+  <h1>One page, every pick applied</h1>
+</header>
+
+<div class="ledger">
+  <div>1A — one page: chat with a session strip, no Chat/Board toggle</div>
+  <div>2C — you tell the orchestrator; it writes to the session</div>
+  <div>3A — a session opens in place, no details page</div>
+  <div>4A — orchestrator actions are live rows in the chat</div>
+  <div>5A — settings are a menu on the agent chip, no footer</div>
+  <div>6A — approvals pin above the message box</div>
+</div>
+
+<p class="said">1A  2C  3A  4A  5A  6A</p>
+
+<div class="why">
+  <b>What composition changed</b>
+  <span style="color:#f59e0b;font-weight:600">Bent: the four-column kanban from your first picture is gone from the panel.</span> 1A and 3A leave one list of sessions, grouped by lane.<br>
+  6A and 1A both sit above the box: the approval goes on top, the strip stays closed under it.<br>
+  3A and 4A: clicking an action row in the chat opens that session in the strip. One place to expand.<br>
+  2C: no per-session message box anywhere. Header, + button, footer and Settings page are removed.<br>
+  5A: a GitHub or hooks problem shows as one line in the strip, only while it is wrong.<br>
+  First run becomes the empty chat with the agent menu open. No separate page.
+</div>
+
+<section class="issue" data-issue="1">
+  <h2><span class="num">1</span>Is this the panel?</h2>
+  <div class="row">
+    <div class="col">
+      <div style="display:flex;gap:14px">
+        <div>
+          <div class="m-steps">Working</div>
+          <div class="screen m">
+            <div class="m-body m-end">
+              <div class="m-me">Close out my open PRs</div>
+              <div class="m-act"><svg><use href="#s-plus"/></svg><span class="n">New workspace · pr-closeout-2-oa</span><span class="s" style="color:var(--attn)">CI failing</span></div>
+              <div class="m-act"><svg><use href="#s-plus"/></svg><span class="n">New workspace · pr-closeout-3-oa</span><span class="s work">Working</span></div>
+              <div class="m-me">tell tablet-chat to merge main</div>
+              <div class="m-act"><svg><use href="#s-pen"/></svg><span class="n">Wrote to tablet-chat</span><span class="s ok">Delivered</span></div>
+              <div class="m-or"><b>#4555 is ready.</b> #4356 needs you: CI failed three times.</div>
+            </div>
+            <div class="m-strip"><div class="sum"><span><i class="m-dot d-work"></i>2</span><span><i class="m-dot d-val"></i>2</span><span><i class="m-dot d-rev"></i>1</span><span><i class="m-dot d-ok"></i>1</span><span class="need">1 needs you</span><svg><use href="#s-chev"/></svg></div></div>
+            <div class="m-comp"><div class="ph">Tell the orchestrator what to do</div><div class="m-bar"><span style="display:inline-flex;gap:6px;align-items:center;background:var(--chip);padding:2px 7px;border-radius:6px"><i class="m-dot d-work"></i><b>Claude</b><svg><use href="#s-chev"/></svg></span>Working<span class="m-send"><svg><use href="#s-up"/></svg></span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="m-steps">Strip open, one session opened</div>
+          <div class="screen m">
+            <div class="m-body m-end" style="opacity:.5">
+              <div class="m-or"><b>#4555 is ready.</b> #4356 needs you.</div>
+            </div>
+            <div class="m-strip open">
+              <div class="sum"><span><i class="m-dot d-work"></i>2</span><span><i class="m-dot d-val"></i>2</span><span><i class="m-dot d-rev"></i>1</span><span><i class="m-dot d-ok"></i>1</span><span class="need">1 needs you</span><svg style="transform:rotate(180deg)"><use href="#s-chev"/></svg></div>
+              <div class="m-rows">
+                <div class="m-row"><i class="m-dot d-work"></i><span class="n">tablet-sidebar-oa</span><span class="s">Working · 14m</span></div>
+                <div style="background:rgba(245,158,11,.1);border-top:1px solid var(--attn);border-bottom:1px solid var(--attn)">
+                  <div class="m-row"><i class="m-dot d-attn"></i><span class="n"><b>Close out #4356</b></span><span class="s warn">CI failing · 3h</span></div>
+                  <div class="m-term" style="border:0;padding-top:0">ao/pr-closeout-2/root · #4356
+✖ 3 problems (3 errors)
+● Fixing src/review/contract.ts</div>
+                  <div class="m-btns" style="padding:2px 10px 8px"><span class="m-btn">Retry fix</span><span class="m-btn"><svg><use href="#s-ext"/></svg>Open in Orca</span><span class="m-btn">PR</span><span class="m-btn">Stop</span></div>
+                </div>
+                <div class="m-row"><i class="m-dot d-val"></i><span class="n">Close out #4550</span><span class="s">Working · 5m</span></div>
+                <div class="m-row"><i class="m-dot d-rev"></i><span class="n">Tablet chat #4555</span><span class="s">Awaiting review</span></div>
+                <div class="m-row"><i class="m-dot d-ok"></i><span class="n">Pill easing #4560</span><span class="s">Mergeable</span></div>
+                <div class="m-row m-muted" style="border-top:1px solid var(--app-border)"><span class="n">Idle · 3</span><svg><use href="#s-chev"/></svg></div>
+              </div>
+            </div>
+            <div class="m-comp"><div class="ph">Tell the orchestrator what to do</div><div class="m-bar"><span style="display:inline-flex;gap:6px;align-items:center;background:var(--chip);padding:2px 7px;border-radius:6px"><i class="m-dot d-work"></i><b>Claude</b><svg><use href="#s-chev"/></svg></span>Working<span class="m-send"><svg><use href="#s-up"/></svg></span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="m-steps">An approval is waiting</div>
+          <div class="screen m">
+            <div class="m-body m-end">
+              <div class="m-me">start the geo index work in yimby</div>
+              <div class="m-act"><svg><use href="#s-plus"/></svg><span class="n">New workspace · geo-index-oa</span><span class="s" style="color:var(--attn)">Blocked</span></div>
+            </div>
+            <div class="m-pin"><div class="h"><b>geo-index-oa</b><i>1 of 2</i></div><div>wants to run: <code>pnpm install</code></div><div class="m-btns"><span class="m-btn pri">Allow once</span><span class="m-btn">Deny</span><span class="m-btn"><svg><use href="#s-term"/></svg>Peek</span></div></div>
+            <div class="m-strip"><div class="sum"><span><i class="m-dot d-work"></i>3</span><span><i class="m-dot d-val"></i>2</span><span><i class="m-dot d-rev"></i>1</span><span><i class="m-dot d-ok"></i>1</span><span class="need">2 need you</span><svg><use href="#s-chev"/></svg></div></div>
+            <div class="m-comp"><div class="ph">Tell the orchestrator what to do</div><div class="m-bar"><span style="display:inline-flex;gap:6px;align-items:center;background:var(--chip);padding:2px 7px;border-radius:6px"><i class="m-dot d-attn"></i><b>Claude</b><svg><use href="#s-chev"/></svg></span>Waiting on approval<span class="m-send"><svg><use href="#s-up"/></svg></span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="m-steps">Agent menu open · something wrong</div>
+          <div class="screen m">
+            <div class="m-body m-end">
+              <div class="m-or"><b>#4555 is ready.</b> #4356 needs you.</div>
+            </div>
+            <div class="m-strip"><div class="sum" style="color:var(--attn);border-bottom:1px solid var(--app-border)">gh is not signed in · PR status is paused</div><div class="sum"><span><i class="m-dot d-work"></i>2</span><span><i class="m-dot d-val"></i>2</span><span><i class="m-dot d-rev"></i>1</span><span><i class="m-dot d-ok"></i>1</span><span class="m-sp"></span><svg><use href="#s-chev"/></svg></div></div>
+            <div class="m-comp">
+              <div class="m-pop show" style="bottom:36px"><div><span>Orchestrator</span><i>Claude</i></div><div><span>Workers</span><i>Codex</i></div><div><span>Worker name ending</span><i>-oa</i></div><div><span>Check GitHub every</span><i>60s</i></div><div><span>Auto-fix CI and reviews</span><i>On</i></div><div><span>Merge guard</span><i>On · 0 blocks</i></div><div><span>Open its terminal</span><i>↗</i></div></div>
+              <div class="ph">Tell the orchestrator what to do</div>
+              <div class="m-bar"><span style="display:inline-flex;gap:6px;align-items:center;background:var(--chip);padding:2px 7px;border-radius:6px"><i class="m-dot d-ok"></i><b>Claude</b><svg style="transform:rotate(180deg)"><use href="#s-chev"/></svg></span>Ready<span class="m-send"><svg><use href="#s-up"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="m-steps">Empty · first run</div>
+          <div class="screen m">
+            <div class="m-body" style="justify-content:center;align-items:center;gap:10px;color:var(--app-muted)">
+              <div style="color:var(--app-fg);font-size:14px">What should I take on?</div>
+              <span class="m-btn">Close out my open PRs</span>
+              <span class="m-btn">What needs me right now?</span>
+              <span class="m-btn">Start a task in a new workspace</span>
+            </div>
+            <div class="m-comp">
+              <div class="m-pop show" style="bottom:36px"><div class="m-muted" style="font-size:11.5px">Pick your orchestrator</div><div class="hi"><span>Claude</span><i>claude</i></div><div><span>Codex</span><i>codex</i></div><div class="m-muted"><span>Grok</span><i>not installed</i></div></div>
+              <div class="ph">Tell the orchestrator what to do</div>
+              <div class="m-bar"><span style="display:inline-flex;gap:6px;align-items:center;background:var(--chip);padding:2px 7px;border-radius:6px"><i class="m-dot"></i><b>Pick an agent</b><svg style="transform:rotate(180deg)"><use href="#s-chev"/></svg></span><span class="m-send" style="opacity:.4"><svg><use href="#s-up"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:none"><span class="pick">1A</span>Looks right<span class="cost">Five pages become one. The kanban columns go.</span></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <div class="screen m short" style="height:120px"><div class="m-body" style="justify-content:center;align-items:center;color:var(--app-muted)">Say what to change in the notes box</div></div>
+      <div class="cap"><span class="pick">1B</span>Close, with a fix<span class="cost">Another round on just that part.</span></div>
+    </div>
+    <div class="col">
+      <div class="screen m short" style="height:120px;width:420px">
+        <div class="m-sheet" style="border-radius:0;box-shadow:none;flex:1;flex-direction:row;gap:0;padding:0">
+          <div style="flex:1;border-right:1px solid var(--app-border);padding:8px"><div class="m-lane"><i class="m-dot d-work"></i><span style="color:var(--work)">Building</span><i>2</i></div></div>
+          <div style="flex:1;border-right:1px solid var(--app-border);padding:8px"><div class="m-lane"><i class="m-dot d-val"></i><span style="color:var(--val)">Validating</span><i>2</i></div></div>
+          <div style="flex:1;border-right:1px solid var(--app-border);padding:8px"><div class="m-lane"><i class="m-dot d-rev"></i><span style="color:var(--rev)">In review</span><i>1</i></div></div>
+          <div style="flex:1;padding:8px"><div class="m-lane"><i class="m-dot d-ok"></i><span style="color:var(--ok)">Ready</span><i>1</i></div></div>
+        </div>
+      </div>
+      <div class="cap"><span class="pick">1C</span>Keep the kanban when the panel is wide<span class="cost">Strip when narrow, columns past 640px. More to build.</span></div>
+    </div>
+  </div>
+</section>
+
+<details class="archive">
+  <summary>Earlier rounds</summary>
+  <p>Round 1: six questions (pages, messaging a session, clicking a session, orchestrator actions, settings, approvals). Answer: 1A 2C 3A 4A 5A 6A.</p>
+</details>
+
+<section id="manual">
+  <h3>Manual copy</h3>
+  <textarea id="answer" readonly placeholder="Click options above. Your answer appears here."></textarea>
+  <div id="legend"></div>
+</section>
+
+<div id="bar">
+  <div id="groups" style="display:flex;flex-wrap:wrap;gap:10px 18px"></div>
+  <div class="actions">
+    <span id="count"></span>
+    <input id="line" readonly aria-label="Answer line">
+    <button id="copy">Copy my picks</button>
+    <button id="clear">Clear</button>
+    <span id="toast"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = document.body.dataset.key || location.pathname;
+  var state = { picks: {}, notes: {} };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    state.picks = saved.picks || {};
+    state.notes = saved.notes || {};
+  } catch (e) {}
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function issueOf(code) { var m = /^(\d+)/.exec(code); return m ? m[1] : code; }
+
+  var issues = [];
+  var options = {};
+  var labels = {};
+  var cards = {};
+
+  document.querySelectorAll(".issue").forEach(function (sec) {
+    var id = sec.dataset.issue;
+    var title = sec.querySelector("h2");
+    labels[id] = title ? title.textContent.replace(/^\s*\d+\s*/, "").trim() : id;
+    issues.push(id);
+    options[id] = [];
+
+    sec.querySelectorAll(".col").forEach(function (col) {
+      var chip = col.querySelector(".cap .pick");
+      if (!chip) return;
+      var code = chip.textContent.trim();
+      if (!/^\d+[A-Za-z]/.test(code)) return;
+      var name = (chip.nextSibling && chip.nextSibling.textContent || "").trim();
+      col.dataset.opt = code;
+      var tick = document.createElement("span");
+      tick.className = "tick";
+      tick.textContent = "✓";
+      col.appendChild(tick);
+      col.addEventListener("click", function (ev) {
+        if (ev.target.closest("textarea, input, a, select")) return;
+        choose(code);
+      });
+      cards[code] = col;
+      options[id].push({ code: code, name: name });
+    });
+
+    if (sec.dataset.keep !== "drawn") options[id].push({ code: id + "-keep", name: "keep as-is" });
+
+    var ta = document.createElement("textarea");
+    ta.className = "notes";
+    ta.dataset.issue = id;
+    ta.placeholder = "Notes on " + id + ": what's off, or what would make it the one";
+    ta.value = state.notes[id] || "";
+    ta.addEventListener("input", function () {
+      if (ta.value.trim()) state.notes[id] = ta.value; else delete state.notes[id];
+      save();
+      render();
+    });
+    sec.appendChild(ta);
+  });
+
+  var groups = document.getElementById("groups");
+  issues.forEach(function (id) {
+    var g = document.createElement("div");
+    g.className = "grp";
+    var b = document.createElement("b");
+    b.textContent = id;
+    g.appendChild(b);
+    options[id].forEach(function (o) {
+      var btn = document.createElement("button");
+      btn.dataset.code = o.code;
+      btn.title = o.name;
+      btn.textContent = /-keep$/.test(o.code) ? "keep" : o.code.slice(id.length);
+      btn.addEventListener("click", function () {
+        choose(o.code);
+        if (cards[o.code]) cards[o.code].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      });
+      g.appendChild(btn);
+    });
+    groups.appendChild(g);
+  });
+
+  document.getElementById("legend").textContent = issues.map(function (id) {
+    return id + "  " + labels[id] + "\n" + options[id].map(function (o) {
+      return "    " + o.code + "  " + o.name;
+    }).join("\n");
+  }).join("\n");
+
+  function choose(code) {
+    var id = issueOf(code);
+    if (state.picks[id] === code) delete state.picks[id]; else state.picks[id] = code;
+    save();
+    render();
+  }
+
+  function answerLine() {
+    return issues.filter(function (id) { return state.picks[id]; })
+      .map(function (id) { return state.picks[id]; }).join("  ");
+  }
+
+  function fullAnswer() {
+    var out = answerLine();
+    var notes = issues.filter(function (id) { return state.notes[id] && state.notes[id].trim(); })
+      .map(function (id) { return id + " (" + labels[id] + "): " + state.notes[id].trim().replace(/\s*\n\s*/g, " / "); });
+    if (notes.length) out += "\n\n" + notes.join("\n");
+    return out;
+  }
+
+  function render() {
+    Object.keys(cards).forEach(function (code) {
+      cards[code].classList.toggle("picked", state.picks[issueOf(code)] === code);
+    });
+    document.querySelectorAll("#groups button").forEach(function (btn) {
+      btn.classList.toggle("on", state.picks[issueOf(btn.dataset.code)] === btn.dataset.code);
+    });
+    var n = issues.filter(function (id) { return state.picks[id]; }).length;
+    document.getElementById("count").textContent = n + " / " + issues.length;
+    document.getElementById("line").value = answerLine();
+    document.getElementById("answer").value = fullAnswer();
+  }
+
+  function flash(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    setTimeout(function () { t.textContent = ""; }, 2500);
+  }
+
+  function fallbackCopy() {
+    var ta = document.getElementById("answer");
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    if (ok) flash("copied");
+    else { ta.scrollIntoView({ block: "center" }); flash("press ⌘C"); }
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = fullAnswer();
+    if (!text) { flash("nothing picked"); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash("copied"); }, fallbackCopy);
+    } else fallbackCopy();
+  });
+
+  document.getElementById("clear").addEventListener("click", function () {
+    state = { picks: {}, notes: {} };
+    document.querySelectorAll("textarea.notes").forEach(function (ta) { ta.value = ""; });
+    save();
+    render();
+  });
+
+  ["line", "answer"].forEach(function (id) {
+    document.getElementById(id).addEventListener("focus", function (ev) { ev.target.select(); });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

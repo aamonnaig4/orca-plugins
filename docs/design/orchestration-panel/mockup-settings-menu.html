@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design options: orchestration settings menu</title>
+<style>
+:root {
+  --app-bg: #0b0b0c;
+  --app-fg: #e8e8e8;
+  --app-muted: #8a8a8a;
+  --app-border: rgba(255,255,255,0.16);
+  --app-accent: #e5e5e5;
+  --app-ok: #4ade80;
+  --app-radius: 12px;
+  --app-font: system-ui, -apple-system, sans-serif;
+
+  --doc-bg: #f1efe9;
+  --doc-fg: #2b2a27;
+  --doc-muted: #8a877f;
+  --doc-pick: #16a34a;
+  --doc-font: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --doc-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --doc-surface: #ffffff;
+  --doc-line: #0002;
+  --doc-shadow: #0001;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --doc-bg: #161513;
+    --doc-fg: #e9e6df;
+    --doc-muted: #8f8b82;
+    --doc-pick: #22c55e;
+    --doc-surface: #211f1c;
+    --doc-line: #fff2;
+    --doc-shadow: #0006;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 24px 220px; background: var(--doc-bg); color: var(--doc-fg); font: 14px/1.4 var(--doc-font); }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+header h1 { font-size: 20px; margin: 0; }
+.round { font: 600 11px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 3px 8px; border-radius: 99px; }
+.ledger { margin: 0 0 24px; padding: 10px 14px; border-left: 3px solid var(--doc-pick); background: var(--doc-surface); font-size: 13px; }
+.ledger div::before { content: "\2713  "; color: var(--doc-pick); font-weight: 700; }
+.issue { margin: 0 0 40px; }
+.issue h2 { font-size: 16px; margin: 0 0 4px; }
+.issue h2 .num { font-family: var(--doc-mono); color: var(--doc-muted); margin-right: 6px; }
+.said { color: var(--doc-muted); font-size: 12px; margin: 0 0 10px; }
+.said::before { content: "you: "; font-weight: 600; }
+.view { font-size: 12px; margin: 6px 0 0; color: var(--doc-muted); }
+.view::before { content: "my view: "; font-weight: 600; }
+.row { display: flex; gap: 16px; overflow-x: auto; padding: 6px 4px 10px; }
+.col { flex: 0 0 auto; position: relative; border-radius: 12px; padding: 8px; outline: 2px solid transparent; transition: outline-color .12s; }
+.col[data-opt] { cursor: pointer; }
+.col[data-opt]:hover { outline-color: var(--doc-line); }
+.col.picked { outline: 3px solid var(--doc-pick); background: color-mix(in srgb, var(--doc-pick) 8%, transparent); }
+.tick { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--doc-pick); color: #fff; font: 700 14px/24px var(--doc-font); text-align: center; }
+.col.picked .tick { display: block; }
+.cap { margin-top: 8px; font-size: 13px; max-width: 360px; }
+.cap .pick { font: 700 12px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+.cap .cost { display: block; color: var(--doc-muted); font-size: 12px; }
+.now .cap .pick { background: var(--doc-muted); }
+.screen { background: var(--app-bg); color: var(--app-fg); font-family: var(--app-font); border: 1px solid var(--app-border); border-radius: var(--app-radius); overflow: hidden; box-shadow: 0 6px 24px var(--doc-shadow); }
+.phone { width: 393px; min-height: 600px; border-radius: 44px; border: 10px solid #111; }
+textarea.notes { display: block; width: 100%; max-width: 760px; min-height: 40px; margin-top: 6px; padding: 8px; font: 13px var(--doc-font); border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-surface); color: var(--doc-fg); resize: vertical; }
+details.archive { margin: 40px 0; color: var(--doc-muted); }
+#manual { margin-top: 48px; padding: 16px; background: var(--doc-surface); border: 1px dashed var(--doc-line); border-radius: 10px; max-width: 760px; }
+#manual h3 { margin: 0 0 8px; font-size: 14px; }
+#manual textarea { width: 100%; min-height: 90px; font: 13px var(--doc-mono); padding: 8px; border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-bg); color: var(--doc-fg); }
+#legend { font: 12px var(--doc-mono); color: var(--doc-muted); margin: 10px 0 0; white-space: pre-wrap; user-select: all; }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; background: #1c1b19f2; color: #eee; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 12px; z-index: 10; }
+#bar .grp { display: flex; gap: 4px; align-items: center; }
+#bar .grp b { font-family: var(--doc-mono); color: #aaa; margin-right: 2px; }
+#bar button { font: 600 12px var(--doc-mono); border: 1px solid #555; background: #2a2926; color: #ddd; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
+#bar button.on { background: var(--doc-pick); border-color: var(--doc-pick); color: #fff; }
+#bar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#bar input#line { width: 260px; font: 12px var(--doc-mono); background: #000; color: #fff; border: 1px solid #555; border-radius: 5px; padding: 4px 6px; }
+#bar #copy { background: #fff; color: #111; border-color: #fff; }
+#count { font-family: var(--doc-mono); color: #aaa; }
+#toast { color: #8f8; min-width: 60px; }
+.screen.m { width: 320px; padding: 5px; border-radius: 12px; font-size: 12.5px; line-height: 1.35; box-shadow: 0 12px 32px #0006; }
+.m * { box-sizing: border-box; }
+.m select, .m input[type=text] { font: inherit; font-size: 12px; color: inherit; background: var(--app-bg); border: 1px solid var(--app-border); border-radius: 6px; padding: 2px 6px; max-width: 150px; }
+.m input[type=text] { width: 80px; }
+.m .r { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px; min-height: 28px; }
+.m .r.l { justify-content: flex-start; gap: 8px; }
+.m .r.in { padding-left: 22px; }
+.m .mu { color: var(--app-muted); }
+.m .sep { height: 1px; margin: 5px 0; background: var(--app-border); }
+.m .it { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 7px; }
+.m .it:hover { background: #ffffff0f; }
+.m .it svg, .m summary svg { width: 14px; height: 14px; stroke: var(--app-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.m .h { padding: 8px 8px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--app-muted); }
+.m .card { margin: 2px 3px 6px; border: 1px solid var(--app-border); border-radius: 9px; background: #ffffff09; }
+.m .card .r + .r { border-top: 1px solid #ffffff14; }
+.m .card .r { padding: 5px 9px; }
+.m input[type=checkbox] { margin: 0; accent-color: var(--app-accent); flex: none; }
+.m input.sw { appearance: none; width: 28px; height: 16px; border-radius: 99px; background: #ffffff26; position: relative; cursor: pointer; transition: background .15s; }
+.m input.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.m input.sw:checked { background: var(--app-ok); }
+.m input.sw:checked::after { transform: translateX(12px); }
+.m .seg { display: inline-flex; border: 1px solid var(--app-border); border-radius: 6px; overflow: hidden; flex: none; }
+.m .seg label { cursor: pointer; }
+.m .seg input { display: none; }
+.m .seg span { display: block; padding: 2px 8px; font-size: 12px; color: var(--app-muted); }
+.m .seg label + label span { border-left: 1px solid var(--app-border); }
+.m .seg input:checked + span { background: #ffffff24; color: var(--app-fg); }
+.m details > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; cursor: pointer; }
+.m details > summary::-webkit-details-marker { display: none; }
+.m details > summary:hover { background: #ffffff0f; }
+.m details > summary b { font-weight: 600; flex: none; }
+.m details > summary .mu { flex: 1; min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.m details[open] > summary svg { transform: rotate(90deg); }
+.m details[open] > summary .mu { visibility: hidden; }
+.m .off { opacity: .45; }
+.m .r { flex-wrap: nowrap; } .m .r > span:first-child { min-width: 0; }
+</style>
+</head>
+<body data-key="design-options:orchestration-settings-menu:r2">
+
+<header><span class="round">COMPOSED</span><h1>The settings menu with every pick</h1></header><div class="ledger"><div>Labeled sections: Agents, Auto-fix, GitHub</div><div>Checkboxes stay on the right</div><div>Numbers are segmented buttons</div><div>Auto-fix is when / then rows</div></div><section class="issue" data-issue="1" data-keep="drawn"><h2><span class="num">1</span>Does the whole menu look right?</h2><p class="said">1A  2-keep  3B  4C</p><div class="row"><div class="col"><div class="screen m" style="width:320px"><div class="h">Agents</div><label class="r "><span>Orchestrator</span><select><option selected>Claude</option><option>Codex</option></select></label><label class="r "><span>Workers</span><select><option selected>Same as the orchestrator</option><option>Claude</option><option>Codex</option></select></label><label class="r "><span>Worker names end in</span><input type="text" value="-oa"></label><div class="h">Auto-fix</div><label class="r "><span>When CI fails</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When a PR has conflicts</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When a review comes in</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When no agent is running</span><select><option selected>Start one</option><option>Ask me</option></select></label><label class="r "><span>Apply to</span><select><option selected>All sessions</option><option>Workers only</option></select></label><label class="r "><span>Tries before asking</span><span class="seg"><label><input type="radio" name="g1"><span>1</span></label><label><input type="radio" name="g1"><span>2</span></label><label><input type="radio" name="g1" checked><span>3</span></label><label><input type="radio" name="g1"><span>5</span></label></span></label><div class="h">GitHub</div><label class="r "><span>Check GitHub every</span><span class="seg"><label><input type="radio" name="g2"><span>30s</span></label><label><input type="radio" name="g2" checked><span>1m</span></label><label><input type="radio" name="g2"><span>2m</span></label><label><input type="radio" name="g2"><span>5m</span></label></span></label><label class="r "><span>Merge guard <span class="mu">· 2 blocks today</span></span><input type="checkbox" checked></label><div class="sep"></div><div class="it"><span>Open its terminal</span><svg viewBox="0 0 16 16"><path d="M4 5l3 3-3 3M9 11h4"/></svg></div><div class="it"><span>Full board in the browser</span><svg viewBox="0 0 16 16"><path d="M9 3h4v4M13 3L7 9M11 9v4H3V5h4"/></svg></div></div><div class="cap"><span class="pick">1A</span>Looks right<span class="cost">Build it like this</span></div></div><div class="col"><div class="screen m" style="width:320px"><div class="h">Agents</div><label class="r "><span>Orchestrator</span><select><option selected>Claude</option><option>Codex</option></select></label><label class="r "><span>Workers</span><select><option selected>Same as the orchestrator</option><option>Claude</option><option>Codex</option></select></label><label class="r "><span>Worker names end in</span><input type="text" value="-oa"></label><div class="h">Auto-fix</div><label class="r "><span>When CI fails</span><select><option>Fix it</option><option>Ask me</option><option selected>Ignore</option></select></label><label class="r "><span>When a PR has conflicts</span><select><option>Fix it</option><option>Ask me</option><option selected>Ignore</option></select></label><label class="r "><span>When a review comes in</span><select><option>Fix it</option><option>Ask me</option><option selected>Ignore</option></select></label><label class="r "><span>When no agent is running</span><select><option selected>Start one</option><option>Ask me</option></select></label><label class="r "><span>Apply to</span><select><option selected>All sessions</option><option>Workers only</option></select></label><label class="r off"><span>Tries before asking</span><span class="seg"><label><input type="radio" name="g3"><span>1</span></label><label><input type="radio" name="g3"><span>2</span></label><label><input type="radio" name="g3" checked><span>3</span></label><label><input type="radio" name="g3"><span>5</span></label></span></label><div class="h">GitHub</div><label class="r "><span>Check GitHub every</span><span class="seg"><label><input type="radio" name="g4"><span>30s</span></label><label><input type="radio" name="g4" checked><span>1m</span></label><label><input type="radio" name="g4"><span>2m</span></label><label><input type="radio" name="g4"><span>5m</span></label></span></label><label class="r "><span>Merge guard</span><input type="checkbox" checked></label><div class="sep"></div><div class="it"><span>Open its terminal</span><svg viewBox="0 0 16 16"><path d="M4 5l3 3-3 3M9 11h4"/></svg></div><div class="it"><span>Full board in the browser</span><svg viewBox="0 0 16 16"><path d="M9 3h4v4M13 3L7 9M11 9v4H3V5h4"/></svg></div></div><div class="cap"><span class="pick">STATE</span>Everything set to Ignore<span class="cost">Tries row dims</span></div></div><div class="col"><div class="screen m" style="width:250px"><div class="h">Agents</div><label class="r "><span>Orchestrator</span><select><option selected>Claude</option><option>Codex</option></select></label><label class="r "><span>Workers</span><select><option selected>Same as the orchestrator</option><option>Claude</option><option>Codex</option></select></label><label class="r "><span>Worker names end in</span><input type="text" value="-oa"></label><div class="h">Auto-fix</div><label class="r "><span>When CI fails</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When a PR has conflicts</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When a review comes in</span><select><option selected>Fix it</option><option>Ask me</option><option>Ignore</option></select></label><label class="r "><span>When no agent is running</span><select><option selected>Start one</option><option>Ask me</option></select></label><label class="r "><span>Apply to</span><select><option selected>All sessions</option><option>Workers only</option></select></label><label class="r "><span>Tries before asking</span><span class="seg"><label><input type="radio" name="g5"><span>1</span></label><label><input type="radio" name="g5"><span>2</span></label><label><input type="radio" name="g5" checked><span>3</span></label><label><input type="radio" name="g5"><span>5</span></label></span></label><div class="h">GitHub</div><label class="r "><span>Check GitHub every</span><span class="seg"><label><input type="radio" name="g6"><span>30s</span></label><label><input type="radio" name="g6" checked><span>1m</span></label><label><input type="radio" name="g6"><span>2m</span></label><label><input type="radio" name="g6"><span>5m</span></label></span></label><label class="r "><span>Merge guard</span><input type="checkbox" checked></label><div class="sep"></div><div class="it"><span>Open its terminal</span><svg viewBox="0 0 16 16"><path d="M4 5l3 3-3 3M9 11h4"/></svg></div><div class="it"><span>Full board in the browser</span><svg viewBox="0 0 16 16"><path d="M9 3h4v4M13 3L7 9M11 9v4H3V5h4"/></svg></div></div><div class="cap"><span class="pick">STATE</span>Narrow panel, 250px<span class="cost">Labels wrap to two lines</span></div></div><div class="col"><div class="screen" style="width:220px;padding:28px 16px;text-align:center;color:var(--app-muted);font-size:12.5px">Something is off.<br>Say what in the notes.</div><div class="cap"><span class="pick">1B</span>Needs a fix<span class="cost">One more round</span></div></div></div></section><div class="ledger" style="border-left-color:var(--doc-muted)"><b>What composition changed</b><p style="margin:6px 0 0">Tries before asking: 4C drew a dropdown, 3B won, so it is segmented buttons.</p><p style="margin:4px 0 0">Checkboxes: 4C left only Merge guard as a checkbox, so 2-keep now covers one row.</p><p style="margin:4px 0 0">"Ask me" raises a card with Fix and Dismiss buttons and sends nothing by itself.</p></div>
+
+<details class="archive">
+  <summary>Earlier rounds</summary><p>Round 1: organization (flat, sections, cards, fold-out), on/off controls (right checkbox, switches, left checkbox), numbers (bare, units, segmented), auto-fix (flat, master switch, when/then). Picked 1A 2-keep 3B 4C.</p>
+</details>
+
+<section id="manual">
+  <h3>Manual copy</h3>
+  <textarea id="answer" readonly placeholder="Click options above. Your answer appears here."></textarea>
+  <div id="legend"></div>
+</section>
+
+<div id="bar">
+  <div id="groups" style="display:flex;flex-wrap:wrap;gap:10px 18px"></div>
+  <div class="actions">
+    <span id="count"></span>
+    <input id="line" readonly aria-label="Answer line">
+    <button id="copy">Copy my picks</button>
+    <button id="clear">Clear</button>
+    <span id="toast"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = document.body.dataset.key || location.pathname;
+  var state = { picks: {}, notes: {} };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    state.picks = saved.picks || {};
+    state.notes = saved.notes || {};
+  } catch (e) {}
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function issueOf(code) { var m = /^(\d+)/.exec(code); return m ? m[1] : code; }
+
+  var issues = [];
+  var options = {};
+  var labels = {};
+  var cards = {};
+
+  document.querySelectorAll(".issue").forEach(function (sec) {
+    var id = sec.dataset.issue;
+    var title = sec.querySelector("h2");
+    labels[id] = title ? title.textContent.replace(/^\s*\d+\s*/, "").trim() : id;
+    issues.push(id);
+    options[id] = [];
+
+    sec.querySelectorAll(".col").forEach(function (col) {
+      var chip = col.querySelector(".cap .pick");
+      if (!chip) return;
+      var code = chip.textContent.trim();
+      if (!/^\d+[A-Za-z]/.test(code)) return;
+      var name = (chip.nextSibling && chip.nextSibling.textContent || "").trim();
+      col.dataset.opt = code;
+      var tick = document.createElement("span");
+      tick.className = "tick";
+      tick.textContent = "✓";
+      col.appendChild(tick);
+      col.addEventListener("click", function (ev) {
+        if (ev.target.closest("textarea, input, a, select")) return;
+        choose(code);
+      });
+      cards[code] = col;
+      options[id].push({ code: code, name: name });
+    });
+
+    if (sec.dataset.keep !== "drawn") options[id].push({ code: id + "-keep", name: "keep as-is" });
+
+    var ta = document.createElement("textarea");
+    ta.className = "notes";
+    ta.dataset.issue = id;
+    ta.placeholder = "Notes on " + id + ": what's off, or what would make it the one";
+    ta.value = state.notes[id] || "";
+    ta.addEventListener("input", function () {
+      if (ta.value.trim()) state.notes[id] = ta.value; else delete state.notes[id];
+      save();
+      render();
+    });
+    sec.appendChild(ta);
+  });
+
+  var groups = document.getElementById("groups");
+  issues.forEach(function (id) {
+    var g = document.createElement("div");
+    g.className = "grp";
+    var b = document.createElement("b");
+    b.textContent = id;
+    g.appendChild(b);
+    options[id].forEach(function (o) {
+      var btn = document.createElement("button");
+      btn.dataset.code = o.code;
+      btn.title = o.name;
+      btn.textContent = /-keep$/.test(o.code) ? "keep" : o.code.slice(id.length);
+      btn.addEventListener("click", function () {
+        choose(o.code);
+        if (cards[o.code]) cards[o.code].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      });
+      g.appendChild(btn);
+    });
+    groups.appendChild(g);
+  });
+
+  document.getElementById("legend").textContent = issues.map(function (id) {
+    return id + "  " + labels[id] + "\n" + options[id].map(function (o) {
+      return "    " + o.code + "  " + o.name;
+    }).join("\n");
+  }).join("\n");
+
+  function choose(code) {
+    var id = issueOf(code);
+    if (state.picks[id] === code) delete state.picks[id]; else state.picks[id] = code;
+    save();
+    render();
+  }
+
+  function answerLine() {
+    return issues.filter(function (id) { return state.picks[id]; })
+      .map(function (id) { return state.picks[id]; }).join("  ");
+  }
+
+  function fullAnswer() {
+    var out = answerLine();
+    var notes = issues.filter(function (id) { return state.notes[id] && state.notes[id].trim(); })
+      .map(function (id) { return id + " (" + labels[id] + "): " + state.notes[id].trim().replace(/\s*\n\s*/g, " / "); });
+    if (notes.length) out += "\n\n" + notes.join("\n");
+    return out;
+  }
+
+  function render() {
+    Object.keys(cards).forEach(function (code) {
+      cards[code].classList.toggle("picked", state.picks[issueOf(code)] === code);
+    });
+    document.querySelectorAll("#groups button").forEach(function (btn) {
+      btn.classList.toggle("on", state.picks[issueOf(btn.dataset.code)] === btn.dataset.code);
+    });
+    var n = issues.filter(function (id) { return state.picks[id]; }).length;
+    document.getElementById("count").textContent = n + " / " + issues.length;
+    document.getElementById("line").value = answerLine();
+    document.getElementById("answer").value = fullAnswer();
+  }
+
+  function flash(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    setTimeout(function () { t.textContent = ""; }, 2500);
+  }
+
+  function fallbackCopy() {
+    var ta = document.getElementById("answer");
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    if (ok) flash("copied");
+    else { ta.scrollIntoView({ block: "center" }); flash("press ⌘C"); }
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = fullAnswer();
+    if (!text) { flash("nothing picked"); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash("copied"); }, fallbackCopy);
+    } else fallbackCopy();
+  });
+
+  document.getElementById("clear").addEventListener("click", function () {
+    state = { picks: {}, notes: {} };
+    document.querySelectorAll("textarea.notes").forEach(function (ta) { ta.value = ""; });
+    save();
+    render();
+  });
+
+  ["line", "answer"].forEach(function (id) {
+    document.getElementById(id).addEventListener("focus", function (ev) { ev.target.select(); });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

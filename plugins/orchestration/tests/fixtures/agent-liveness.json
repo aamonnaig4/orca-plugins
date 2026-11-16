@@ -1,0 +1,475 @@
+{
+  "worktreePs": {
+    "worktrees": [
+      {
+        "workspaceKind": "git",
+        "worktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "repoId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "hostId": "local",
+        "identity": {
+          "key": "wt2:local:9869bd68-f031-444f-a049-abbf126f5daa",
+          "executionHostId": "local",
+          "instanceId": "9869bd68-f031-444f-a049-abbf126f5daa"
+        },
+        "terminalPlatform": "darwin",
+        "repo": "orca-plugins",
+        "path": "/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "branch": "refs/heads/aamonnaig4/orchestration-build",
+        "isArchived": false,
+        "isMainWorktree": false,
+        "hasHostSidebarActivity": true,
+        "defaultBranch": false,
+        "worktreeInstanceId": "9869bd68-f031-444f-a049-abbf126f5daa",
+        "lineageWorktreeInstanceId": "9869bd68-f031-444f-a049-abbf126f5daa",
+        "parentWorktreeInstanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502",
+        "parentWorktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+        "childWorktreeIds": [],
+        "workspaceLineage": null,
+        "displayName": "orchestration",
+        "workspaceStatus": "in-progress",
+        "sortOrder": 1794774474916,
+        "manualOrder": 1794774474807,
+        "lastActivityAt": 1794785761581,
+        "createdAt": 1794774474915,
+        "creatorProvenance": {
+          "kind": "host"
+        },
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedItems": [],
+        "comment": "",
+        "isPinned": false,
+        "isActive": false,
+        "unread": false,
+        "liveTerminalCount": 1,
+        "hasAttachedPty": true,
+        "unverifiableTerminalCount": 0,
+        "lastOutputAt": 1794786221908,
+        "preview": "REDACTED",
+        "status": "working",
+        "agents": [
+          {
+            "paneKey": "a13e9c98-c62e-4031-99d8-c4960b394aea:d4fc24d7-1964-4caf-b3d5-56446aee9d32",
+            "orcaSessionId": "claude_61163050_b003_432d_89df_1208f51ecfc2",
+            "parentPaneKey": null,
+            "state": "working",
+            "agentType": "claude",
+            "prompt": "REDACTED",
+            "taskTitle": null,
+            "displayName": null,
+            "conversationName": "Orca orchestration panel plan",
+            "lastAssistantMessage": "REDACTED",
+            "toolName": null,
+            "toolInput": "REDACTED",
+            "interrupted": false,
+            "mainAgent": {
+              "state": "done",
+              "stateStartedAt": 1794786211696
+            },
+            "stateStartedAt": 1794785241774,
+            "updatedAt": 1794786222023,
+            "subagents": [
+              {
+                "id": "ac38cefb02f5510e2",
+                "state": "working",
+                "startedAt": 1794786166486,
+                "agentType": "general-purpose",
+                "description": "Fix r2: guard false positives on heredocs"
+              },
+              {
+                "id": "a7aca547eb6a119c0",
+                "state": "working",
+                "startedAt": 1794786166488,
+                "agentType": "general-purpose",
+                "description": "Fix r3: needs and watcher safety gaps"
+              },
+              {
+                "id": "aba2052da6470cf37",
+                "state": "working",
+                "startedAt": 1794786166489,
+                "agentType": "general-purpose",
+                "description": "Fix r3: delivery liveness proof"
+              },
+              {
+                "id": "a877b7873f6731b12",
+                "state": "working",
+                "startedAt": 1794786166497,
+                "agentType": "general-purpose",
+                "description": "Fix r1: worker wiring findings"
+              }
+            ],
+            "hasLivePty": true,
+            "programStatus": {
+              "state": "working",
+              "observedAt": 1794786176984
+            },
+            "subagentObservation": "live",
+            "activity": {
+              "listed": true,
+              "status": "working",
+              "unread": false,
+              "clearable": false,
+              "sortAt": 1794785241774,
+              "title": "Orca orchestration panel plan"
+            }
+          },
+          {
+            "paneKey": "structured-agent-session-grok_eb3f9be1_5506_4acf_ab28_b18773f33b12:9af0510b-dc72-4669-a7c8-054bc5e2213e",
+            "parentPaneKey": null,
+            "state": "working",
+            "agentType": "grok",
+            "prompt": "REDACTED",
+            "taskTitle": null,
+            "displayName": null,
+            "conversationName": "Orca conductor plugin image options",
+            "lastAssistantMessage": "REDACTED",
+            "toolName": "read_file",
+            "toolInput": "REDACTED",
+            "interrupted": false,
+            "mainAgent": {
+              "state": "working",
+              "stateStartedAt": 1794786112954
+            },
+            "stateStartedAt": 1794786112954,
+            "updatedAt": 1794786195671,
+            "children": [],
+            "structuredHostOwned": true,
+            "subagentObservation": "live",
+            "activity": {
+              "listed": true,
+              "status": "working",
+              "unread": false,
+              "clearable": false,
+              "sortAt": 1794786112954,
+              "title": "Orca conductor plugin image options"
+            }
+          }
+        ],
+        "sidebarStatus": "working",
+        "terminalVerdict": "live",
+        "environment": {
+          "id": "local",
+          "name": "local"
+        },
+        "parent": {
+          "state": "known",
+          "selector": "id:5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+          "environment": {
+            "id": "local",
+            "name": "local"
+          },
+          "address": {
+            "environment": "local",
+            "worktree": "identity:wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502",
+            "line": "--environment local --worktree identity:wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502"
+          }
+        },
+        "address": {
+          "environment": "local",
+          "worktree": "identity:wt2:local:9869bd68-f031-444f-a049-abbf126f5daa",
+          "line": "--environment local --worktree identity:wt2:local:9869bd68-f031-444f-a049-abbf126f5daa"
+        }
+      },
+      {
+        "workspaceKind": "git",
+        "worktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+        "repoId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "hostId": "local",
+        "identity": {
+          "key": "wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502",
+          "executionHostId": "local",
+          "instanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502"
+        },
+        "terminalPlatform": "darwin",
+        "repo": "orca-plugins",
+        "path": "/Users/aamonnaig/Developer/orca-plugins",
+        "branch": "refs/heads/main",
+        "isArchived": false,
+        "isMainWorktree": true,
+        "hasHostSidebarActivity": true,
+        "defaultBranch": true,
+        "worktreeInstanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502",
+        "parentWorktreeId": null,
+        "childWorktreeIds": [
+          "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration"
+        ],
+        "workspaceLineage": null,
+        "displayName": "main",
+        "workspaceStatus": "in-progress",
+        "sortOrder": 1794774446961,
+        "lastActivityAt": 1794774446961,
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedItems": [],
+        "comment": "",
+        "isPinned": false,
+        "isActive": false,
+        "unread": false,
+        "liveTerminalCount": 1,
+        "hasAttachedPty": true,
+        "unverifiableTerminalCount": 0,
+        "lastOutputAt": 1794786131395,
+        "preview": "REDACTED",
+        "status": "active",
+        "agents": [],
+        "sidebarStatus": "active",
+        "terminalVerdict": "live",
+        "environment": {
+          "id": "local",
+          "name": "local"
+        },
+        "parent": null,
+        "address": {
+          "environment": "local",
+          "worktree": "identity:wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502",
+          "line": "--environment local --worktree identity:wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502"
+        }
+      }
+    ],
+    "hostScope": {
+      "hostIds": [
+        "local"
+      ],
+      "omittedHostIds": [
+        "runtime:REDACTED"
+      ],
+      "omittedHostSelectors": [
+        {
+          "hostId": "runtime:REDACTED",
+          "selector": "--environment REDACTED"
+        }
+      ]
+    },
+    "totalCount": 2,
+    "truncated": false
+  },
+  "terminalList": {
+    "terminals": [
+      {
+        "handle": "term_76dffcf2-d223-49df-a7e1-dcd204fcf164",
+        "ptyId": "global-floating-terminal@@4a8ad710",
+        "incarnationId": "7754e44f-426e-407b-9e79-18cef55b588a",
+        "orphaned": false,
+        "worktreeId": "global-floating-terminal",
+        "worktreePath": "",
+        "branch": "",
+        "tabId": "d9fa1d9a-54eb-41b5-aa00-585ef90d9d44",
+        "leafId": "919be4c1-bfa0-4195-ab09-d0b04035e9c1",
+        "title": "Agent orchestration in Orca",
+        "connected": true,
+        "writable": true,
+        "lastOutputAt": null,
+        "preview": "REDACTED",
+        "executionHostId": "local",
+        "agentIdentity": "claude"
+      },
+      {
+        "handle": "term_bb58dc1e-f21b-4ee1-ae9e-a7b92eeef75d",
+        "ptyId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration@@edb6ffdf",
+        "incarnationId": "ba7c222c-a7ee-4d2c-92aa-bc3e0ed40847",
+        "orphaned": false,
+        "worktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "worktreePath": "/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "branch": "refs/heads/aamonnaig4/orchestration-build",
+        "tabId": "a13e9c98-c62e-4031-99d8-c4960b394aea",
+        "leafId": "d4fc24d7-1964-4caf-b3d5-56446aee9d32",
+        "title": "Orca orchestration panel plan",
+        "connected": true,
+        "writable": true,
+        "lastOutputAt": 1794786222503,
+        "preview": "REDACTED",
+        "executionHostId": "local",
+        "agentIdentity": "claude"
+      },
+      {
+        "handle": "term_188c6f3c-27b5-45c4-9741-390665dfc036",
+        "ptyId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins@@56a16ead",
+        "incarnationId": "f6192656-52bc-432c-95ae-6a0d76df0ebc",
+        "orphaned": true,
+        "recordedPaneKey": "b5b4c296-b7f1-4694-9822-f0fd8b8d7021:c7fdcd74-9dbe-49a5-ad4c-6b9d6f091302",
+        "worktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+        "worktreePath": "/Users/aamonnaig/Developer/orca-plugins",
+        "branch": "refs/heads/main",
+        "tabId": "pty:5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins@@56a16ead",
+        "leafId": "pty:5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins@@56a16ead",
+        "title": null,
+        "connected": true,
+        "writable": true,
+        "lastOutputAt": 1794786131395,
+        "preview": "REDACTED",
+        "executionHostId": "local"
+      }
+    ],
+    "hostScope": {
+      "hostIds": [
+        "local"
+      ],
+      "omittedHostIds": [
+        "runtime:REDACTED"
+      ],
+      "omittedHostSelectors": [
+        {
+          "hostId": "runtime:REDACTED",
+          "selector": "--environment REDACTED"
+        }
+      ]
+    },
+    "topologyRevisions": {
+      "global-floating-terminal": 3,
+      "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration": 7,
+      "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins": 7
+    },
+    "totalCount": 3,
+    "truncated": false
+  },
+  "orchestrator": {
+    "worktreePs": {
+      "worktrees": [
+        {
+          "workspaceKind": "git",
+          "worktreeId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home",
+          "repoId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+          "hostId": "local",
+          "terminalPlatform": "darwin",
+          "repo": "home",
+          "path": "/Users/aamonnaig/.orca-orchestration/home",
+          "branch": "",
+          "isArchived": false,
+          "isMainWorktree": true,
+          "hasHostSidebarActivity": true,
+          "defaultBranch": false,
+          "worktreeInstanceId": "f6ae7416-fe67-440b-b3c7-1554246061ec",
+          "parentWorktreeId": null,
+          "childWorktreeIds": [],
+          "workspaceLineage": null,
+          "displayName": "home",
+          "workspaceStatus": "in-progress",
+          "sortOrder": 1794778611535,
+          "lastActivityAt": 1794778915489,
+          "linkedIssue": null,
+          "linkedPR": null,
+          "linkedLinearIssue": null,
+          "linkedGitLabMR": null,
+          "linkedGitLabIssue": null,
+          "linkedItems": [],
+          "comment": "",
+          "isPinned": false,
+          "isActive": false,
+          "unread": true,
+          "liveTerminalCount": 1,
+          "hasAttachedPty": true,
+          "unverifiableTerminalCount": 0,
+          "lastOutputAt": 1794788524104,
+          "preview": "REDACTED",
+          "status": "active",
+          "agents": [
+            {
+              "paneKey": "structured-agent-session-claude_780deaf0_a5af_43e1_8867_0eb5272b6ced:799792ea-df2e-4157-a1bc-86d4f73b34c2",
+              "parentPaneKey": null,
+              "state": "done",
+              "agentType": "claude",
+              "prompt": "REDACTED",
+              "taskTitle": null,
+              "displayName": null,
+              "conversationName": "REDACTED",
+              "lastAssistantMessage": "REDACTED",
+              "toolName": null,
+              "toolInput": "REDACTED",
+              "interrupted": false,
+              "mainAgent": {
+                "state": "done",
+                "outcome": "success",
+                "stateStartedAt": 1794778949023
+              },
+              "stateStartedAt": 1794778949023,
+              "updatedAt": 1794778949045,
+              "children": [],
+              "subagentObservation": "unverifiable",
+              "activity": {
+                "listed": true,
+                "status": "done",
+                "unread": true,
+                "clearable": true,
+                "sortAt": 1794778949023,
+                "title": "REDACTED"
+              }
+            },
+            {
+              "paneKey": "d9f43b00-cad4-454d-9af4-4eb1ac0adfa8:2ae00982-393e-4c3a-b27f-d35dbe068b0c",
+              "orcaSessionId": "claude_01cf5cf1_a95c_4793_a9b9_94afffbf515c",
+              "parentPaneKey": null,
+              "state": "done",
+              "agentType": "claude",
+              "prompt": "REDACTED",
+              "taskTitle": null,
+              "displayName": null,
+              "lastAssistantMessage": "REDACTED",
+              "toolName": null,
+              "toolInput": "REDACTED",
+              "interrupted": false,
+              "mainAgent": {
+                "state": "done",
+                "stateStartedAt": 1794788498054
+              },
+              "stateStartedAt": 1794788498054,
+              "updatedAt": 1794788498054,
+              "hasLivePty": true,
+              "programStatus": {
+                "state": "idle",
+                "observedAt": 1794788498312
+              },
+              "activity": {
+                "listed": false
+              }
+            }
+          ],
+          "sidebarStatus": "done",
+          "terminalVerdict": "live",
+          "environment": {
+            "id": "local",
+            "name": "local"
+          },
+          "parent": null,
+          "address": {
+            "environment": "local",
+            "worktree": "id:ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home",
+            "line": "--environment local --worktree id:ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home"
+          }
+        }
+      ],
+      "totalCount": 1,
+      "truncated": false
+    },
+    "terminalList": {
+      "terminals": [
+        {
+          "handle": "term_1f13679f-7807-4508-9488-54f96eb242ff",
+          "ptyId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home@@b307f18a",
+          "incarnationId": "f5a2bcb4-0723-4d7b-b098-01e5dc98a4fd",
+          "orphaned": true,
+          "recordedPaneKey": "d9f43b00-cad4-454d-9af4-4eb1ac0adfa8:2ae00982-393e-4c3a-b27f-d35dbe068b0c",
+          "worktreeId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home",
+          "worktreePath": "/Users/aamonnaig/.orca-orchestration/home",
+          "branch": "",
+          "tabId": "pty:ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home@@b307f18a",
+          "leafId": "pty:ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home@@b307f18a",
+          "title": "Claude Code",
+          "connected": true,
+          "writable": true,
+          "lastOutputAt": 1794788524104,
+          "preview": "REDACTED",
+          "executionHostId": "local",
+          "agentIdentity": "claude"
+        }
+      ],
+      "totalCount": 1,
+      "truncated": false
+    }
+  }
+}

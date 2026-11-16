@@ -1,0 +1,247 @@
+{
+  "id": "84cc155c-dee2-42e4-8d7f-9f9a27acecf9",
+  "ok": true,
+  "result": {
+    "worktrees": [
+      {
+        "id": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+        "identity": {
+          "key": "wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502",
+          "executionHostId": "local",
+          "instanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502"
+        },
+        "instanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502",
+        "repoId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "projectId": "github:aamonnaig4/orca-plugins",
+        "hostId": "local",
+        "projectHostSetupId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "path": "/Users/aamonnaig/Developer/orca-plugins",
+        "head": "9577a5c2ff87f644e5689257bbacaaef593e3afe",
+        "branch": "refs/heads/main",
+        "isBare": false,
+        "isMainWorktree": true,
+        "displayName": "main",
+        "displayNameMode": "automatic",
+        "comment": "",
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedLinearIssueWorkspaceId": null,
+        "linkedLinearIssueOrganizationUrlKey": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedBitbucketPR": null,
+        "linkedAzureDevOpsPR": null,
+        "linkedGiteaPR": null,
+        "linkedWorkItem": null,
+        "linkedTaskSourceContext": null,
+        "isArchived": false,
+        "isUnread": false,
+        "isPinned": false,
+        "sortOrder": 1794774446961,
+        "lastActivityAt": 1794774446961,
+        "workspaceStatus": "in-progress",
+        "parentWorktreeId": null,
+        "childWorktreeIds": [
+          "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration"
+        ],
+        "lineage": null,
+        "git": {
+          "path": "/Users/aamonnaig/Developer/orca-plugins",
+          "head": "9577a5c2ff87f644e5689257bbacaaef593e3afe",
+          "branch": "refs/heads/main",
+          "isBare": false,
+          "isMainWorktree": true
+        },
+        "linkedItems": []
+      },
+      {
+        "id": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "identity": {
+          "key": "wt2:local:9869bd68-f031-444f-a049-abbf126f5daa",
+          "executionHostId": "local",
+          "instanceId": "9869bd68-f031-444f-a049-abbf126f5daa"
+        },
+        "instanceId": "9869bd68-f031-444f-a049-abbf126f5daa",
+        "repoId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "projectId": "github:aamonnaig4/orca-plugins",
+        "hostId": "local",
+        "projectHostSetupId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "creatorProvenance": {
+          "kind": "host"
+        },
+        "path": "/Users/aamonnaig/Developer/orca-plugins/orchestration",
+        "head": "c47dc38a41b7a0ba377b099c723f97cc527b5dbe",
+        "branch": "refs/heads/aamonnaig4/orchestration-build",
+        "isBare": false,
+        "isMainWorktree": false,
+        "displayName": "orchestration",
+        "displayNameMode": "fixed",
+        "comment": "",
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedLinearIssueWorkspaceId": null,
+        "linkedLinearIssueOrganizationUrlKey": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedBitbucketPR": null,
+        "linkedAzureDevOpsPR": null,
+        "linkedGiteaPR": null,
+        "linkedWorkItem": null,
+        "linkedItems": [],
+        "linkedTaskSourceContext": null,
+        "isArchived": false,
+        "isUnread": false,
+        "isPinned": false,
+        "sortOrder": 1794774474916,
+        "manualOrder": 1794774474807,
+        "lastActivityAt": 1794778263901,
+        "createdAt": 1794774474915,
+        "createdWithAgent": "claude",
+        "baseRef": "refs/remotes/origin/main",
+        "workspaceStatus": "in-progress",
+        "parentWorktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+        "childWorktreeIds": [],
+        "lineage": {
+          "worktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/orchestration",
+          "worktreeInstanceId": "9869bd68-f031-444f-a049-abbf126f5daa",
+          "parentWorktreeId": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins",
+          "parentWorktreeInstanceId": "9a0b0e52-9b28-4a23-a626-1db954b18502",
+          "origin": "manual",
+          "capture": {
+            "source": "manual-action",
+            "confidence": "explicit"
+          },
+          "createdAt": 1794774474915
+        },
+        "git": {
+          "path": "/Users/aamonnaig/Developer/orca-plugins/orchestration",
+          "head": "c47dc38a41b7a0ba377b099c723f97cc527b5dbe",
+          "branch": "refs/heads/aamonnaig4/orchestration-build",
+          "isBare": false,
+          "isMainWorktree": false
+        }
+      },
+      {
+        "id": "5e954941-0215-463e-97e1-feb38c4e64ff::/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+        "identity": {
+          "key": "wt2:local:e4c5b3f5-797b-4987-9199-d48dd1796aec",
+          "executionHostId": "local",
+          "instanceId": "e4c5b3f5-797b-4987-9199-d48dd1796aec"
+        },
+        "instanceId": "e4c5b3f5-797b-4987-9199-d48dd1796aec",
+        "repoId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "projectId": "github:aamonnaig4/orca-plugins",
+        "hostId": "local",
+        "projectHostSetupId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+        "creatorProvenance": {
+          "kind": "host"
+        },
+        "path": "/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+        "head": "6f708f5b087e09a3f11e075a6fde64fe030597fb",
+        "branch": "refs/heads/aamonnaig4/spike-oa",
+        "isBare": false,
+        "isMainWorktree": false,
+        "displayName": "spike-oa",
+        "displayNameMode": "fixed",
+        "comment": "orch:spike",
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedLinearIssueWorkspaceId": null,
+        "linkedLinearIssueOrganizationUrlKey": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedBitbucketPR": null,
+        "linkedAzureDevOpsPR": null,
+        "linkedGiteaPR": null,
+        "linkedWorkItem": null,
+        "linkedTaskSourceContext": null,
+        "isArchived": false,
+        "isUnread": false,
+        "isPinned": false,
+        "sortOrder": 1794778743411,
+        "lastActivityAt": 1794778743411,
+        "createdAt": 1794778743411,
+        "createdWithAgent": "claude",
+        "baseRef": "refs/remotes/origin/main",
+        "workspaceStatus": "in-progress",
+        "parentWorktreeId": null,
+        "childWorktreeIds": [],
+        "lineage": null,
+        "git": {
+          "path": "/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+          "head": "6f708f5b087e09a3f11e075a6fde64fe030597fb",
+          "branch": "refs/heads/aamonnaig4/spike-oa",
+          "isBare": false,
+          "isMainWorktree": false
+        },
+        "linkedItems": []
+      },
+      {
+        "id": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home",
+        "instanceId": "f6ae7416-fe67-440b-b3c7-1554246061ec",
+        "repoId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+        "projectId": "repo:ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+        "hostId": "local",
+        "projectHostSetupId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+        "path": "/Users/aamonnaig/.orca-orchestration/home",
+        "head": "",
+        "branch": "",
+        "isBare": false,
+        "isMainWorktree": true,
+        "displayName": "home",
+        "comment": "",
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedLinearIssueWorkspaceId": null,
+        "linkedLinearIssueOrganizationUrlKey": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedBitbucketPR": null,
+        "linkedAzureDevOpsPR": null,
+        "linkedGiteaPR": null,
+        "linkedWorkItem": null,
+        "linkedTaskSourceContext": null,
+        "isArchived": false,
+        "isUnread": true,
+        "isPinned": false,
+        "sortOrder": 1794778611535,
+        "lastActivityAt": 1794778915489,
+        "workspaceStatus": "in-progress",
+        "parentWorktreeId": null,
+        "childWorktreeIds": [],
+        "lineage": null,
+        "git": {
+          "path": "/Users/aamonnaig/.orca-orchestration/home",
+          "head": "",
+          "branch": "",
+          "isBare": false,
+          "isMainWorktree": true
+        },
+        "linkedItems": []
+      }
+    ],
+    "hostScope": {
+      "hostIds": [
+        "local"
+      ],
+      "omittedHostIds": [
+        "runtime:ac08844a-d5e3-496d-97d1-875ec4ceecfa"
+      ],
+      "omittedHostSelectors": [
+        {
+          "hostId": "runtime:ac08844a-d5e3-496d-97d1-875ec4ceecfa",
+          "selector": "--environment Fedora Tulane"
+        }
+      ]
+    },
+    "totalCount": 13,
+    "truncated": false
+  },
+  "_meta": {
+    "runtimeId": "8bc5d147-0056-44f4-bdfd-a6667c9daacd"
+  }
+}

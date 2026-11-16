@@ -1,0 +1,70 @@
+{
+  "workspaces": [
+    {
+      "id": "identity:wt2:local:9a0b0e52-9b28-4a23-a626-1db954b18502",
+      "kind": "worktree",
+      "name": "main",
+      "project": "orca-plugins",
+      "projectId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+      "path": "/Users/aamonnaig/Developer/orca-plugins",
+      "branch": "main",
+      "hostId": "local",
+      "status": {
+        "state": "active",
+        "unread": false,
+        "terminalCount": 1,
+        "lastActivityAt": 1794777888512
+      }
+    },
+    {
+      "id": "identity:wt2:local:9869bd68-f031-444f-a049-abbf126f5daa",
+      "kind": "worktree",
+      "name": "orchestration",
+      "project": "orca-plugins",
+      "projectId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+      "path": "/Users/aamonnaig/Developer/orca-plugins/orchestration",
+      "branch": "aamonnaig4/orchestration-build",
+      "hostId": "local",
+      "status": {
+        "state": "working",
+        "unread": false,
+        "terminalCount": 1,
+        "lastActivityAt": 1794778947339
+      }
+    },
+    {
+      "id": "identity:wt2:local:e4c5b3f5-797b-4987-9199-d48dd1796aec",
+      "kind": "worktree",
+      "name": "spike-oa",
+      "project": "orca-plugins",
+      "projectId": "5e954941-0215-463e-97e1-feb38c4e64ff",
+      "path": "/Users/aamonnaig/Developer/orca-plugins/spike-oa",
+      "branch": "aamonnaig4/spike-oa",
+      "hostId": "local",
+      "status": {
+        "state": "active",
+        "unread": false,
+        "terminalCount": 1,
+        "lastActivityAt": 1794778797493
+      }
+    },
+    {
+      "id": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305::/Users/aamonnaig/.orca-orchestration/home",
+      "kind": "folder",
+      "name": "home",
+      "project": "home",
+      "projectId": "ed35e1a6-a877-4c36-9b9a-c9aa020a5305",
+      "path": "/Users/aamonnaig/.orca-orchestration/home",
+      "branch": null,
+      "hostId": "local",
+      "status": {
+        "state": "permission",
+        "unread": true,
+        "terminalCount": 1,
+        "lastActivityAt": 1794778947441
+      }
+    }
+  ],
+  "truncated": false,
+  "statusTruncated": false
+}

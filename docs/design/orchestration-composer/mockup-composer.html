@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composer options</title>
+<style>
+:root {
+  --app-bg: #0a0a0a;
+  --app-fg: #ededed;
+  --app-muted: #8a8a8a;
+  --app-border: rgba(255,255,255,0.12);
+  --app-accent: #60a5fa;
+  --app-radius: 10px;
+  --app-font: system-ui, -apple-system, sans-serif;
+  --chip: rgba(255,255,255,0.08);
+  --hover: rgba(255,255,255,0.06);
+  --card: rgba(255,255,255,0.035);
+  --line-strong: rgba(255,255,255,0.28);
+  --ok: #5fbf7f;
+  --warn: #f5a524;
+  --pop: #1b1b1b;
+
+  --doc-bg: #f1efe9;
+  --doc-fg: #2b2a27;
+  --doc-muted: #8a877f;
+  --doc-pick: #16a34a;
+  --doc-font: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --doc-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --doc-surface: #ffffff;
+  --doc-line: #0002;
+  --doc-shadow: #0001;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --doc-bg: #161513;
+    --doc-fg: #e9e6df;
+    --doc-muted: #8f8b82;
+    --doc-pick: #22c55e;
+    --doc-surface: #211f1c;
+    --doc-line: #fff2;
+    --doc-shadow: #0006;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 24px 220px; background: var(--doc-bg); color: var(--doc-fg); font: 14px/1.4 var(--doc-font); }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+header h1 { font-size: 20px; margin: 0; }
+.round { font: 600 11px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 3px 8px; border-radius: 99px; }
+.ledger { margin: 0 0 24px; padding: 10px 14px; border-left: 3px solid var(--doc-pick); background: var(--doc-surface); font-size: 13px; }
+.ledger div::before { content: "\2713  "; color: var(--doc-pick); font-weight: 700; }
+.issue { margin: 0 0 40px; }
+.issue h2 { font-size: 16px; margin: 0 0 4px; }
+.issue h2 .num { font-family: var(--doc-mono); color: var(--doc-muted); margin-right: 6px; }
+.said { color: var(--doc-muted); font-size: 12px; margin: 0 0 10px; }
+.said::before { content: "you: "; font-weight: 600; }
+.view { font-size: 12px; margin: 6px 0 0; color: var(--doc-muted); }
+.view::before { content: "my view: "; font-weight: 600; }
+.row { display: flex; gap: 16px; overflow-x: auto; padding: 6px 4px 10px; }
+.col { flex: 0 0 auto; position: relative; border-radius: 12px; padding: 8px; outline: 2px solid transparent; transition: outline-color .12s; }
+.col[data-opt] { cursor: pointer; }
+.col[data-opt]:hover { outline-color: var(--doc-line); }
+.col.picked { outline: 3px solid var(--doc-pick); background: color-mix(in srgb, var(--doc-pick) 8%, transparent); }
+.tick { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--doc-pick); color: #fff; font: 700 14px/24px var(--doc-font); text-align: center; }
+.col.picked .tick { display: block; }
+.cap { margin-top: 8px; font-size: 13px; max-width: 360px; }
+.cap .pick { font: 700 12px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+.cap .cost { display: block; color: var(--doc-muted); font-size: 12px; }
+.now .cap .pick { background: var(--doc-muted); }
+.screen { background: var(--app-bg); color: var(--app-fg); font-family: var(--app-font); border: 1px solid var(--app-border); border-radius: var(--app-radius); overflow: hidden; box-shadow: 0 6px 24px var(--doc-shadow); }
+.phone { width: 393px; min-height: 600px; border-radius: 44px; border: 10px solid #111; }
+textarea.notes { display: block; width: 100%; max-width: 760px; min-height: 40px; margin-top: 6px; padding: 8px; font: 13px var(--doc-font); border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-surface); color: var(--doc-fg); resize: vertical; }
+details.archive { margin: 40px 0; color: var(--doc-muted); }
+#manual { margin-top: 48px; padding: 16px; background: var(--doc-surface); border: 1px dashed var(--doc-line); border-radius: 10px; max-width: 760px; }
+#manual h3 { margin: 0 0 8px; font-size: 14px; }
+#manual textarea { width: 100%; min-height: 90px; font: 13px var(--doc-mono); padding: 8px; border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-bg); color: var(--doc-fg); }
+#legend { font: 12px var(--doc-mono); color: var(--doc-muted); margin: 10px 0 0; white-space: pre-wrap; user-select: all; }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; background: #1c1b19f2; color: #eee; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 12px; z-index: 10; }
+#bar .grp { display: flex; gap: 4px; align-items: center; }
+#bar .grp b { font-family: var(--doc-mono); color: #aaa; margin-right: 2px; }
+#bar button { font: 600 12px var(--doc-mono); border: 1px solid #555; background: #2a2926; color: #ddd; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
+#bar button.on { background: var(--doc-pick); border-color: var(--doc-pick); color: #fff; }
+#bar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#bar input#line { width: 260px; font: 12px var(--doc-mono); background: #000; color: #fff; border: 1px solid #555; border-radius: 5px; padding: 4px 6px; }
+#bar #copy { background: #fff; color: #111; border-color: #fff; }
+#count { font-family: var(--doc-mono); color: #aaa; }
+#toast { color: #8f8; min-width: 60px; }
+.screen { width: 440px; padding: 12px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; font-size: 13px; }
+.screen.tall { height: 470px; }
+.screen.short { height: 170px; }
+.ic { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ghost { color: var(--app-muted); font-size: 12px; margin-bottom: 10px; opacity: .6; }
+.cmp { position: relative; border: 1px solid var(--app-border); border-radius: 16px; background: var(--card); padding: 10px 10px 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.cmp .ph { color: var(--app-muted); min-height: 38px; font-size: 13.5px; }
+.bar { display: flex; align-items: center; gap: 8px; }
+.sp { flex: 1; }
+.agent { display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px 3px 5px; margin-left: -5px; border-radius: 7px; background: var(--chip); font-size: 12px; color: var(--app-muted); }
+.agent b { color: var(--app-fg); font-weight: 550; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.send { width: 28px; height: 28px; border-radius: 50%; background: #ededed; color: #111; display: grid; place-items: center; }
+.cc { border: 0; border-radius: 20px; background: #1c1c1c; padding: 14px 12px 10px 16px; gap: 14px; }
+.cc .ph { min-height: 44px; font-size: 14px; }
+.plus { width: 30px; height: 30px; border-radius: 50%; background: #2a2a2a; display: grid; place-items: center; color: var(--app-fg); }
+.plus.flat { background: none; color: var(--app-muted); }
+.sendg { width: 30px; height: 30px; border-radius: 50%; background: #8a8a8a; color: #1a1a1a; display: grid; place-items: center; }
+.model { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 9px; font-size: 12.5px; }
+.model.open, .model:hover { background: #2a2a2a; }
+.model .m { color: var(--app-muted); }
+.perm { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 9px; font-size: 12.5px; color: var(--app-fg); }
+.perm.open { background: #2a2a2a; }
+.pop { position: absolute; bottom: calc(100% + 8px); background: var(--pop); border: 1px solid var(--app-border); border-radius: 12px; padding: 6px; box-shadow: 0 10px 30px #0008; z-index: 2; font-size: 12.5px; }
+.pop .h { color: var(--app-muted); font-size: 11px; padding: 4px 8px 6px; letter-spacing: .02em; }
+.pop .it { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; }
+.pop .it:hover, .pop .it.sel { background: #262626; }
+.pop .it .d { color: var(--app-muted); }
+.pop .it .r { margin-left: auto; color: var(--app-muted); display: inline-flex; align-items: center; gap: 4px; }
+.pop .sep { height: 1px; background: var(--app-border); margin: 5px 2px; }
+.pop .two { display: flex; flex-direction: column; gap: 1px; }
+.pop .two .d { font-size: 11.5px; line-height: 1.35; }
+.pop .warnc, .pop .warnc .d { color: var(--warn); }
+.search { display: flex; align-items: center; gap: 8px; margin: 2px 2px 6px; padding: 7px 10px; border: 1px solid var(--app-border); border-radius: 9px; color: var(--app-muted); }
+.tog { width: 30px; height: 17px; border-radius: 99px; background: #333; position: relative; margin-left: auto; }
+.tog::after { content: ""; position: absolute; left: 2px; top: 2px; width: 13px; height: 13px; border-radius: 50%; background: #ddd; }
+.seg { margin-left: auto; display: inline-flex; border: 1px solid var(--app-border); border-radius: 7px; overflow: hidden; }
+.seg span { padding: 3px 8px; color: var(--app-muted); }
+.seg span.on { background: #2e2e2e; color: var(--app-fg); }
+.oldmenu { width: 300px; }
+.oldmenu .row2 { display: flex; justify-content: space-between; padding: 6px 8px; }
+.oldmenu .sel2 { border: 1px solid var(--app-border); border-radius: 6px; padding: 2px 8px; color: var(--app-fg); }
+</style>
+</head>
+<body data-key="design-options:orch-composer:r2">
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="up" viewBox="0 0 24 24"><path d="M12 19V5.5M6 11.5l6-6 6 6"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="chevu" viewBox="0 0 24 24"><path d="M6 14.5l6-6 6 6"/></symbol>
+  <symbol id="chevr" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="clip" viewBox="0 0 24 24"><path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></symbol>
+  <symbol id="list" viewBox="0 0 24 24"><path d="M10.5 6.5H20M10.5 12H20M10.5 17.5H20M4 6.5l1.4 1.4L8 5.3M4 12l1.4 1.4L8 10.8M4 17.5l1.4 1.4L8 16.3"/></symbol>
+  <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="shieldx" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="hand" viewBox="0 0 24 24"><path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11V5a1.5 1.5 0 0 1 3 0v6M14 11V6.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 7-6.5 7-2.5 0-4-1.3-5.5-3.5L3.6 15a1.5 1.5 0 0 1 2.4-1.8L8 15"/></symbol>
+  <symbol id="pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+  <symbol id="branch" viewBox="0 0 24 24"><circle cx="7" cy="5.5" r="2.2"/><circle cx="7" cy="18.5" r="2.2"/><circle cx="17" cy="8" r="2.2"/><path d="M7 7.7v8.6M17 10.2c0 3.6-4 3.4-10 5"/></symbol>
+  <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+  <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></symbol>
+</svg>
+
+<header>
+  <span class="round">ROUND 2</span>
+  <h1>Every pick together</h1>
+</header>
+
+<div class="ledger">
+  <div>1B: same layout as Claude Code, keeps the Orca border, flat +, white send</div>
+  <div>2A′: + opens Files, Plan mode, Fast mode, New worker</div>
+  <div>3B: one chip menu with Auto-fix and GitHub as drill-down rows</div>
+  <div>4A: five permission modes, like Claude Code</div>
+</div>
+
+<div class="ledger" style="border-left-color:var(--doc-muted)">
+  <div style="font-weight:600">What composition changed</div>
+  <div>+ open: the flat + (1B) gets a filled circle while its menu is open (2A).</div>
+  <div>Workers row (3B) and permission mode (4A) both cover workers; the mode follows Workers unless you set it per session.</div>
+  <div>Under ~400px panel width the chip drops "· Medium" so Auto and send stay on one line.</div>
+</div>
+
+<section class="issue" data-issue="1" data-keep="drawn">
+  <h2><span class="num">1</span>Does this look right?</h2>
+  <div class="row">
+    <div class="col">
+      <div class="screen tall"><div class="cmp cc" style="border:1px solid var(--app-border)"><div class="ph">Tell the orchestrator what to do</div><div class="bar"><span class="plus flat"><svg class="ic"><use href="#plus"/></svg></span><span class="model"><i class="dot"></i>Claude <span class="m">Opus 5.5 · Medium</span></span><span class="sp"></span><span class="perm"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chev"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">Closed</div>
+    </div>
+    <div class="col">
+      <div class="screen tall"><div class="cmp cc" style="border:1px solid var(--app-border)">
+        <div class="pop" style="left:0;right:0"><div class="h">Add</div>
+          <div class="it"><svg class="ic"><use href="#clip"/></svg>Files <span class="d">Attach files to this message</span></div>
+          <div class="it"><svg class="ic"><use href="#list"/></svg>Plan mode <span class="d">Turn plan mode on</span></div>
+          <div class="it"><svg class="ic"><use href="#bolt"/></svg>Fast mode <span class="d">Turn fast mode on</span></div>
+          <div class="sep"></div>
+          <div class="it sel"><svg class="ic"><use href="#branch"/></svg>New worker <span class="d">Start a worker on a task</span></div>
+        </div>
+        <div class="ph">Tell the orchestrator what to do</div><div class="bar"><span class="plus" style="background:#2a2a2a"><svg class="ic"><use href="#plus"/></svg></span><span class="model"><i class="dot"></i>Claude <span class="m">Opus 5.5 · Medium</span></span><span class="sp"></span><span class="perm"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chev"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">+ open</div>
+    </div>
+    <div class="col">
+      <div class="screen tall"><div class="cmp cc" style="border:1px solid var(--app-border)">
+        <div class="pop" style="left:20px;width:300px">
+          <div class="it">Agent <span class="r">Claude Code<svg class="ic"><use href="#chevr"/></svg></span></div>
+          <div class="it">Model <span class="r">Opus 5.5<svg class="ic"><use href="#chevr"/></svg></span></div>
+          <div class="it">Effort <span class="r">Medium<svg class="ic"><use href="#chevr"/></svg></span></div>
+          <div class="it">Workers <span class="r">Same<svg class="ic"><use href="#chevr"/></svg></span></div>
+          <div class="sep"></div>
+          <div class="it">Fast mode <span class="tog"></span></div>
+          <div class="sep"></div>
+          <div class="it sel">Auto-fix <span class="r">CI, conflicts, reviews<svg class="ic"><use href="#chevr"/></svg></span></div>
+          <div class="it">GitHub <span class="r">1m · guard on<svg class="ic"><use href="#chevr"/></svg></span></div>
+        </div>
+        <div class="ph">Tell the orchestrator what to do</div><div class="bar"><span class="plus flat"><svg class="ic"><use href="#plus"/></svg></span><span class="model open"><i class="dot"></i>Claude <span class="m">Opus 5.5 · Medium</span></span><span class="sp"></span><span class="perm"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chev"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">Chip open</div>
+    </div>
+    <div class="col">
+      <div class="screen tall"><div class="cmp cc" style="border:1px solid var(--app-border)">
+        <div class="pop" style="left:20px;width:300px">
+          <div class="it"><svg class="ic" style="transform:rotate(180deg)"><use href="#chevr"/></svg><b>Auto-fix</b></div>
+          <div class="sep"></div>
+          <div class="it">When CI fails <span class="r">Fix it<svg class="ic"><use href="#chev"/></svg></span></div>
+          <div class="it">When a PR has conflicts <span class="r">Fix it<svg class="ic"><use href="#chev"/></svg></span></div>
+          <div class="it">When a review comes in <span class="r">Fix it<svg class="ic"><use href="#chev"/></svg></span></div>
+          <div class="it">When no agent is running <span class="r">Start one<svg class="ic"><use href="#chev"/></svg></span></div>
+          <div class="it">Apply to <span class="r">All sessions<svg class="ic"><use href="#chev"/></svg></span></div>
+          <div class="it">Tries before asking <span class="seg"><span>1</span><span>2</span><span class="on">3</span><span>5</span></span></div>
+        </div>
+        <div class="ph">Tell the orchestrator what to do</div><div class="bar"><span class="plus flat"><svg class="ic"><use href="#plus"/></svg></span><span class="model open"><i class="dot"></i>Claude <span class="m">Opus 5.5 · Medium</span></span><span class="sp"></span><span class="perm"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chev"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">Auto-fix drilled in</div>
+    </div>
+    <div class="col">
+      <div class="screen tall"><div class="cmp cc" style="border:1px solid var(--app-border)">
+        <div class="pop" style="right:0;width:310px">
+          <div class="it sel"><svg class="ic"><use href="#shield"/></svg><span class="two">Auto<span class="d">Classifier approves or denies prompts</span></span><span class="r"><svg class="ic"><use href="#check"/></svg></span></div>
+          <div class="it"><svg class="ic"><use href="#hand"/></svg><span class="two">Manual<span class="d">Prompts for dangerous operations</span></span></div>
+          <div class="it"><svg class="ic"><use href="#pen"/></svg><span class="two">Accept Edits<span class="d">Auto-accept file edits</span></span></div>
+          <div class="it"><svg class="ic"><use href="#hand"/></svg><span class="two">Don't Ask<span class="d">Deny anything not pre-approved</span></span></div>
+          <div class="it warnc"><svg class="ic"><use href="#shieldx"/></svg><span class="two">Bypass Permissions<span class="d">Bypass all permission checks</span></span></div>
+          <div class="sep"></div>
+          <div class="it">Remember for this project <span class="tog"></span></div>
+        </div>
+        <div class="ph">Tell the orchestrator what to do</div><div class="bar"><span class="plus flat"><svg class="ic"><use href="#plus"/></svg></span><span class="model"><i class="dot"></i>Claude <span class="m">Opus 5.5 · Medium</span></span><span class="sp"></span><span class="perm open"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chevu"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">Permission open</div>
+    </div>
+    <div class="col">
+      <div class="screen tall" style="width:360px"><div class="cmp cc" style="border:1px solid var(--app-border)"><div class="ph" style="color:var(--app-fg)">Fix CI on #4555 and open a worker for the tablet sidebar</div><div class="bar"><span class="plus flat"><svg class="ic"><use href="#plus"/></svg></span><span class="model"><i class="dot"></i>Claude <span class="m">Opus 5.5</span></span><span class="sp"></span><span class="perm"><svg class="ic"><use href="#shield"/></svg>Auto<svg class="ic"><use href="#chev"/></svg></span><span class="send"><svg class="ic"><use href="#up"/></svg></span></div></div></div>
+      <div class="cap">Typing, narrow panel</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col"><div class="cap"><span class="pick">1A</span>Looks right<span class="cost">ready to implement when you ask</span></div></div>
+    <div class="col"><div class="cap"><span class="pick">1B</span>Needs a fix<span class="cost">say what in the note</span></div></div>
+  </div>
+</section>
+
+<details class="archive">
+  <summary>Earlier rounds</summary>
+  <p>Round 1: 1B 2A 3B 4A. Note on 2: add New worker too.</p>
+</details>
+
+
+<section id="manual">
+  <h3>Manual copy</h3>
+  <textarea id="answer" readonly placeholder="Click options above. Your answer appears here."></textarea>
+  <div id="legend"></div>
+</section>
+
+<div id="bar">
+  <div id="groups" style="display:flex;flex-wrap:wrap;gap:10px 18px"></div>
+  <div class="actions">
+    <span id="count"></span>
+    <input id="line" readonly aria-label="Answer line">
+    <button id="copy">Copy my picks</button>
+    <button id="clear">Clear</button>
+    <span id="toast"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = document.body.dataset.key || location.pathname;
+  var state = { picks: {}, notes: {} };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    state.picks = saved.picks || {};
+    state.notes = saved.notes || {};
+  } catch (e) {}
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function issueOf(code) { var m = /^(\d+)/.exec(code); return m ? m[1] : code; }
+
+  var issues = [];
+  var options = {};
+  var labels = {};
+  var cards = {};
+
+  document.querySelectorAll(".issue").forEach(function (sec) {
+    var id = sec.dataset.issue;
+    var title = sec.querySelector("h2");
+    labels[id] = title ? title.textContent.replace(/^\s*\d+\s*/, "").trim() : id;
+    issues.push(id);
+    options[id] = [];
+
+    sec.querySelectorAll(".col").forEach(function (col) {
+      var chip = col.querySelector(".cap .pick");
+      if (!chip) return;
+      var code = chip.textContent.trim();
+      if (!/^\d+[A-Za-z]/.test(code)) return;
+      var name = (chip.nextSibling && chip.nextSibling.textContent || "").trim();
+      col.dataset.opt = code;
+      var tick = document.createElement("span");
+      tick.className = "tick";
+      tick.textContent = "✓";
+      col.appendChild(tick);
+      col.addEventListener("click", function (ev) {
+        if (ev.target.closest("textarea, input, a, select")) return;
+        choose(code);
+      });
+      cards[code] = col;
+      options[id].push({ code: code, name: name });
+    });
+
+    if (sec.dataset.keep !== "drawn") options[id].push({ code: id + "-keep", name: "keep as-is" });
+
+    var ta = document.createElement("textarea");
+    ta.className = "notes";
+    ta.dataset.issue = id;
+    ta.placeholder = "Notes on " + id + ": what's off, or what would make it the one";
+    ta.value = state.notes[id] || "";
+    ta.addEventListener("input", function () {
+      if (ta.value.trim()) state.notes[id] = ta.value; else delete state.notes[id];
+      save();
+      render();
+    });
+    sec.appendChild(ta);
+  });
+
+  var groups = document.getElementById("groups");
+  issues.forEach(function (id) {
+    var g = document.createElement("div");
+    g.className = "grp";
+    var b = document.createElement("b");
+    b.textContent = id;
+    g.appendChild(b);
+    options[id].forEach(function (o) {
+      var btn = document.createElement("button");
+      btn.dataset.code = o.code;
+      btn.title = o.name;
+      btn.textContent = /-keep$/.test(o.code) ? "keep" : o.code.slice(id.length);
+      btn.addEventListener("click", function () {
+        choose(o.code);
+        if (cards[o.code]) cards[o.code].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      });
+      g.appendChild(btn);
+    });
+    groups.appendChild(g);
+  });
+
+  document.getElementById("legend").textContent = issues.map(function (id) {
+    return id + "  " + labels[id] + "\n" + options[id].map(function (o) {
+      return "    " + o.code + "  " + o.name;
+    }).join("\n");
+  }).join("\n");
+
+  function choose(code) {
+    var id = issueOf(code);
+    if (state.picks[id] === code) delete state.picks[id]; else state.picks[id] = code;
+    save();
+    render();
+  }
+
+  function answerLine() {
+    return issues.filter(function (id) { return state.picks[id]; })
+      .map(function (id) { return state.picks[id]; }).join("  ");
+  }
+
+  function fullAnswer() {
+    var out = answerLine();
+    var notes = issues.filter(function (id) { return state.notes[id] && state.notes[id].trim(); })
+      .map(function (id) { return id + " (" + labels[id] + "): " + state.notes[id].trim().replace(/\s*\n\s*/g, " / "); });
+    if (notes.length) out += "\n\n" + notes.join("\n");
+    return out;
+  }
+
+  function render() {
+    Object.keys(cards).forEach(function (code) {
+      cards[code].classList.toggle("picked", state.picks[issueOf(code)] === code);
+    });
+    document.querySelectorAll("#groups button").forEach(function (btn) {
+      btn.classList.toggle("on", state.picks[issueOf(btn.dataset.code)] === btn.dataset.code);
+    });
+    var n = issues.filter(function (id) { return state.picks[id]; }).length;
+    document.getElementById("count").textContent = n + " / " + issues.length;
+    document.getElementById("line").value = answerLine();
+    document.getElementById("answer").value = fullAnswer();
+  }
+
+  function flash(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    setTimeout(function () { t.textContent = ""; }, 2500);
+  }
+
+  function fallbackCopy() {
+    var ta = document.getElementById("answer");
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    if (ok) flash("copied");
+    else { ta.scrollIntoView({ block: "center" }); flash("press ⌘C"); }
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = fullAnswer();
+    if (!text) { flash("nothing picked"); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash("copied"); }, fallbackCopy);
+    } else fallbackCopy();
+  });
+
+  document.getElementById("clear").addEventListener("click", function () {
+    state = { picks: {}, notes: {} };
+    document.querySelectorAll("textarea.notes").forEach(function (ta) { ta.value = ""; });
+    save();
+    render();
+  });
+
+  ["line", "answer"].forEach(function (id) {
+    document.getElementById(id).addEventListener("focus", function (ev) { ev.target.select(); });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

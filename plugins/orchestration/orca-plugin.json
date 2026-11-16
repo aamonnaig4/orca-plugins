@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "id": "orchestration",
+  "name": "Orchestration",
+  "version": "1.0.0",
+  "execution": "trusted-worker",
+  "description": "One orchestrator chat for every project, a Board of every agent session, PR babysitting and a merge guard.",
+  "license": "MIT",
+  "repository": "https://github.com/aamonnaig4/orca-plugins",
+  "icon": "media/icon.png",
+  "engines": {
+    "orca": ">=1.4.259"
+  },
+  "pluginApi": 1,
+  "main": "src/worker.ts",
+  "contributes": {
+    "panels": [
+      {
+        "id": "orchestration",
+        "title": "Orchestration",
+        "icon": "agent",
+        "entry": "panel/index.html"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "needs",
+        "text": "1 needs you",
+        "icon": "agent",
+        "tone": "danger"
+      }
+    ],
+    "events": [
+      { "on": "agent.status.changed" },
+      { "on": "workspace.created" },
+      { "on": "workspace.removed" }
+    ],
+    "hooks": [
+      { "event": "agent.tool.before" },
+      { "event": "agent.tool.after" }
+    ],
+    "settings": [
+      { "key": "orchestratorAgent", "title": "Orchestrator agent", "type": "string", "default": "" },
+      { "key": "workerAgent", "title": "Default worker agent", "type": "string", "default": "" },
+      { "key": "suffix", "title": "Worker name suffix", "type": "string", "default": "-oa" },
+      { "key": "intervalSec", "title": "GitHub check interval", "type": "number", "default": 60 },
+      { "key": "attempts", "title": "Fix attempts before asking", "type": "number", "default": 3 },
+      { "key": "guard", "title": "Merge guard", "type": "boolean", "default": true },
+      { "key": "onCi", "title": "When CI fails", "type": "string", "default": "fix" },
+      { "key": "onConflict", "title": "When a PR has conflicts", "type": "string", "default": "fix" },
+      { "key": "onReview", "title": "When a review comes in", "type": "string", "default": "fix" },
+      { "key": "noAgent", "title": "When no agent is running", "type": "string", "default": "start" },
+      { "key": "scope", "title": "Apply auto-fix to", "type": "string", "default": "all" }
+    ]
+  },
+  "capabilities": [
+    { "kind": "storage:own" },
+    { "kind": "settings:own" },
+    { "kind": "notifications:show" },
+    { "kind": "agent:read" },
+    { "kind": "agent:launch" },
+    { "kind": "terminal:read" },
+    { "kind": "terminal:send" },
+    { "kind": "workspace:read" }
+  ]
+}

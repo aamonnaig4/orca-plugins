@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestration Panel Options</title>
+<style>
+:root {
+  --app-bg: #ffffff;
+  --app-fg: #1f1f1f;
+  --app-muted: #6b6b6b;
+  --app-border: #e6e6e6;
+  --app-accent: #2563eb;
+  --app-radius: 10px;
+  --app-font: system-ui, -apple-system, sans-serif;
+  --ok: #1a7f37; --warn: #b45309; --bad: #cf222e; --info: #2563eb;
+  --hover: rgba(0,0,0,0.05); --chip: rgba(0,0,0,0.06); --track: rgba(0,0,0,0.12);
+
+  --doc-bg: #f1efe9;
+  --doc-fg: #2b2a27;
+  --doc-muted: #8a877f;
+  --doc-pick: #16a34a;
+  --doc-font: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --doc-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --doc-surface: #ffffff;
+  --doc-line: #0002;
+  --doc-shadow: #0001;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --doc-bg: #161513;
+    --doc-fg: #e9e6df;
+    --doc-muted: #8f8b82;
+    --doc-pick: #22c55e;
+    --doc-surface: #211f1c;
+    --doc-line: #fff2;
+    --doc-shadow: #0006;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 24px 220px; background: var(--doc-bg); color: var(--doc-fg); font: 14px/1.4 var(--doc-font); }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+header h1 { font-size: 20px; margin: 0; }
+.round { font: 600 11px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 3px 8px; border-radius: 99px; }
+.ledger { margin: 0 0 24px; padding: 10px 14px; border-left: 3px solid var(--doc-pick); background: var(--doc-surface); font-size: 13px; }
+.ledger div::before { content: "\2713  "; color: var(--doc-pick); font-weight: 700; }
+.issue { margin: 0 0 40px; }
+.issue h2 { font-size: 16px; margin: 0 0 4px; }
+.issue h2 .num { font-family: var(--doc-mono); color: var(--doc-muted); margin-right: 6px; }
+.said { color: var(--doc-muted); font-size: 12px; margin: 0 0 10px; }
+.said::before { content: "you: "; font-weight: 600; }
+.view { font-size: 12px; margin: 6px 0 0; color: var(--doc-muted); }
+.view::before { content: "my view: "; font-weight: 600; }
+.row { display: flex; gap: 16px; overflow-x: auto; padding: 6px 4px 10px; }
+.col { flex: 0 0 auto; position: relative; border-radius: 12px; padding: 8px; outline: 2px solid transparent; transition: outline-color .12s; }
+.col[data-opt] { cursor: pointer; }
+.col[data-opt]:hover { outline-color: var(--doc-line); }
+.col.picked { outline: 3px solid var(--doc-pick); background: color-mix(in srgb, var(--doc-pick) 8%, transparent); }
+.tick { display: none; position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--doc-pick); color: #fff; font: 700 14px/24px var(--doc-font); text-align: center; }
+.col.picked .tick { display: block; }
+.cap { margin-top: 8px; font-size: 13px; max-width: 360px; }
+.cap .pick { font: 700 12px var(--doc-mono); background: var(--doc-fg); color: var(--doc-bg); padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+.cap .cost { display: block; color: var(--doc-muted); font-size: 12px; }
+.now .cap .pick { background: var(--doc-muted); }
+.screen { background: var(--app-bg); color: var(--app-fg); font-family: var(--app-font); border: 1px solid var(--app-border); border-radius: var(--app-radius); overflow: hidden; box-shadow: 0 6px 24px var(--doc-shadow); }
+textarea.notes { display: block; width: 100%; max-width: 760px; min-height: 40px; margin-top: 6px; padding: 8px; font: 13px var(--doc-font); border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-surface); color: var(--doc-fg); resize: vertical; }
+details.archive { margin: 40px 0; color: var(--doc-muted); }
+#manual { margin-top: 48px; padding: 16px; background: var(--doc-surface); border: 1px dashed var(--doc-line); border-radius: 10px; max-width: 760px; }
+#manual h3 { margin: 0 0 8px; font-size: 14px; }
+#manual textarea { width: 100%; min-height: 90px; font: 13px var(--doc-mono); padding: 8px; border: 1px solid var(--doc-line); border-radius: 6px; background: var(--doc-bg); color: var(--doc-fg); }
+#legend { font: 12px var(--doc-mono); color: var(--doc-muted); margin: 10px 0 0; white-space: pre-wrap; user-select: all; }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; background: #1c1b19f2; color: #eee; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 12px; z-index: 10; }
+#bar .grp { display: flex; gap: 4px; align-items: center; }
+#bar .grp b { font-family: var(--doc-mono); color: #aaa; margin-right: 2px; }
+#bar button { font: 600 12px var(--doc-mono); border: 1px solid #555; background: #2a2926; color: #ddd; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
+#bar button.on { background: var(--doc-pick); border-color: var(--doc-pick); color: #fff; }
+#bar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#bar input#line { width: 260px; font: 12px var(--doc-mono); background: #000; color: #fff; border: 1px solid #555; border-radius: 5px; padding: 4px 6px; }
+#bar #copy { background: #fff; color: #111; border-color: #fff; }
+#count { font-family: var(--doc-mono); color: #aaa; }
+#toast { color: #8f8; min-width: 60px; }
+
+.side { width: 400px; height: 720px; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; }
+.side svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.tabs { display: flex; align-items: center; gap: 2px; padding: 8px 8px 6px; border-bottom: 1px solid var(--app-border); color: #555; }
+.tabs .t { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; }
+.tabs .t.on { border: 1.5px solid #bbb; color: #111; box-shadow: inset 0 -2px 0 #111; }
+.tabs .sp { flex: 1; }
+.body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.foot { border-top: 1px solid var(--app-border); padding: 7px 12px; display: flex; gap: 14px; color: #666; font-size: 12px; align-items: center; }
+.foot .d { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.hd { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+.hd .ttl { font-weight: 650; font-size: 14px; }
+.hd .sp { flex: 1; }
+.muted { color: var(--app-muted); }
+.small { font-size: 11.5px; }
+.seg { display: inline-flex; background: var(--chip); border-radius: 7px; padding: 2px; }
+.seg span { padding: 3px 9px; border-radius: 5px; font-size: 12px; color: #555; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+.seg span.on { background: #fff; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; background: var(--chip); font-size: 12px; color: #222; cursor: pointer; }
+.btn.pri { background: #111; color: #fff; }
+.btn.ghost { background: transparent; border: 1px solid var(--track); }
+.ib { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; color: #555; cursor: pointer; }
+.ib:hover, .item:hover, .btn:hover { background: var(--hover); }
+.compose { margin: 4px 12px 10px; border: 1px solid var(--track); border-radius: 10px; padding: 9px 10px; }
+.compose .ph { color: #9a9a9a; }
+.compose .bar2 { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.compose .bar2 .sp { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 99px; background: var(--chip); font-size: 11.5px; color: #444; }
+.grp-h { padding: 10px 14px 4px; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: #8a8a8a; display: flex; gap: 6px; align-items: center; }
+.grp-h .n { background: var(--chip); border-radius: 99px; padding: 0 6px; font-weight: 600; letter-spacing: 0; }
+.item { display: flex; gap: 9px; padding: 7px 14px; align-items: flex-start; cursor: pointer; }
+.item .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto; }
+.item .main { flex: 1; min-width: 0; }
+.item .l1 { display: flex; gap: 6px; align-items: baseline; }
+.item .name { font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .num { color: #888; font-size: 12px; }
+.item .l2 { color: var(--app-muted); font-size: 12px; margin-top: 1px; }
+.item .right { font-size: 11.5px; color: #888; white-space: nowrap; }
+.bad { color: var(--bad); } .ok { color: var(--ok); } .warn { color: var(--warn); } .info { color: var(--info); }
+.bg-bad { background: var(--bad); } .bg-ok { background: var(--ok); } .bg-warn { background: var(--warn); } .bg-info { background: var(--info); } .bg-mute { background: #bbb; }
+.card { margin: 6px 12px; border: 1px solid var(--app-border); border-radius: 10px; padding: 10px 11px; }
+.card .top { display: flex; gap: 8px; align-items: center; }
+.card .top .name { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.checks { display: grid; grid-template-columns: 14px 1fr auto; gap: 4px 6px; margin: 8px 0 6px; font-size: 12px; align-items: center; }
+.checks svg { width: 13px; height: 13px; }
+.meter { display: flex; gap: 3px; }
+.meter i { width: 14px; height: 4px; border-radius: 2px; background: var(--track); display: block; }
+.meter i.f { background: var(--warn); }
+.acts { display: flex; gap: 6px; margin-top: 8px; }
+.feed { padding: 4px 14px; }
+.ev { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f0f0; }
+.ev .when { color: #999; font-size: 11px; }
+.ev b { font-weight: 600; }
+.ptabs { display: flex; gap: 16px; padding: 0 14px; border-bottom: 1px solid var(--app-border); }
+.ptabs span { padding: 8px 0; color: #777; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+.ptabs span.on { color: #111; box-shadow: inset 0 -2px 0 #111; }
+.ptabs .n { background: var(--chip); border-radius: 99px; padding: 0 6px; font-size: 11px; }
+.chatlog { flex: 1; padding: 6px 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.msg.me { align-self: flex-end; background: var(--chip); padding: 7px 10px; border-radius: 12px 12px 3px 12px; max-width: 85%; }
+.msg.ai { max-width: 95%; }
+.term { flex: 1; margin: 0 12px 10px; background: #111; color: #d6d6d6; border-radius: 8px; padding: 10px; font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; overflow: hidden; }
+.term .g { color: #7ee787; } .term .y { color: #e3b341; } .term .c { color: #79c0ff; } .term .m { color: #8b949e; }
+.guard { margin: 8px 12px 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--bad) 7%, transparent); color: #7a1d1d; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.expand { display: none; padding: 2px 14px 10px 31px; }
+.item.open + .expand { display: block; }
+.mainwin { width: 760px; height: 300px; display: grid; grid-template-columns: 1fr 300px; }
+.mainwin .left { border-right: 1px solid var(--app-border); display: flex; flex-direction: column; }
+.mainwin .tabbar { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--app-border); font-size: 12px; }
+.mainwin .tabbar span { padding: 6px 10px; border-radius: 6px 6px 0 0; color: #777; display: inline-flex; gap: 5px; align-items: center; }
+.mainwin .tabbar span.on { background: #fff; color: #111; border: 1px solid var(--app-border); border-bottom-color: #fff; margin-bottom: -1px; }
+.hint { font: 11px var(--doc-mono); color: var(--doc-muted); margin-top: 4px; }
+</style>
+</head>
+<body data-key="design-options:orca-orchestration-panel:r4">
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-files" viewBox="0 0 24 24"><path d="M15 2H9a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6z"/><path d="M5 6v14a2 2 0 0 0 2 2h9"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 8.5v7M18 8.5c0 5-6 4-11 7.5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="M4 7l2 2 3-3M4 16l2 2 3-3M12 7h8M12 17h8"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4h12l-2 4 2 4H5"/></symbol>
+    <symbol id="i-blocks" viewBox="0 0 24 24"><rect x="3" y="11" width="10" height="10" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><path d="M3 11V5a2 2 0 0 1 2-2h5v8"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+    <symbol id="i-net" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="12" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.2v9.6M12 12H5v4.8M12 12h7v4.8"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 18h7"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7M18 15.5V9a3 3 0 0 0-3-3h-4M13 4l-2 2 2 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 4v-4H5z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M8 7.5c3 0 5 2 7.5 4.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h12M12 6l6 6-6 6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-conflict" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></symbol>
+  </defs>
+</svg>
+
+<style>
+.kb { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 4px 12px 10px; flex: 1; }
+.kb .kc { background: rgba(0,0,0,0.03); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.kb .kh { font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: #8a8a8a; padding: 2px 4px; display: flex; gap: 6px; align-items: center; }
+.kb .kh .n { background: var(--chip); border-radius: 99px; padding: 0 6px; letter-spacing: 0; }
+.kb .kt { background: #fff; border: 1px solid var(--app-border); border-radius: 7px; padding: 7px 8px; font-size: 12px; }
+.kb .kt .name { font-weight: 560; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb .kt .l2 { color: var(--app-muted); font-size: 11.5px; margin-top: 2px; }
+.kb .kt .bdg { display: flex; gap: 6px; align-items: center; margin-top: 5px; font-size: 11px; color: #888; }
+.kb .kt .bdg .dot { width: 7px; height: 7px; border-radius: 50%; }
+.wide { width: 760px; height: 470px; }
+.pg { margin: 0 0 34px; }
+.pg h3 { font-size: 14px; margin: 0 0 2px; }
+.pg .what { font-size: 12.5px; color: var(--doc-muted); margin: 0 0 10px; max-width: 760px; }
+.pg .pair { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.redot { color: var(--bad); font-weight: 800; }
+.settings { width: 560px; padding: 18px 20px; font-size: 13px; }
+.settings .srow { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--app-border); gap: 20px; }
+.settings .srow .k { font-weight: 600; }
+.settings .srow .d { color: var(--app-muted); font-size: 12px; margin-top: 2px; }
+.input { border: 1px solid var(--track); border-radius: 6px; padding: 4px 8px; min-width: 120px; font-size: 12.5px; }
+</style>
+
+<header>
+  <span class="round">ROUND 4</span>
+  <h1>Every page the plugin will have</h1>
+</header>
+
+<div class="ledger">
+  <div>1A: board grouped by what each worker needs</div>
+  <div>2C: chat or terminal is a setting, asked once on first run</div>
+  <div>3A: compact rows; clicking one opens its worktree</div>
+  <div>4B: quiet footer, plus a banner when a merge was blocked</div>
+  <div>6A: board turns into kanban automatically when wide</div>
+  <div>7A: Chat | Board toggle; the panel shows one at a time</div>
+</div>
+
+<div class="pg">
+  <h3>1. First run</h3>
+  <p class="what">Shown once. The choice becomes the "Chat style" setting.</p>
+  <div class="pair">
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span></div>
+        <div style="padding:6px 14px 0">
+          <div class="muted small" style="margin-bottom:10px">How should the orchestrator talk to you?</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="card" style="margin:0;flex:1;border-color:#111"><svg style="width:18px;height:18px"><use href="#i-chat"/></svg><div style="font-weight:600;margin-top:4px">Chat</div><div class="muted small">Messages in this panel</div></div>
+            <div class="card" style="margin:0;flex:1"><svg style="width:18px;height:18px"><use href="#i-term"/></svg><div style="font-weight:600;margin-top:4px">Terminal</div><div class="muted small">Its CLI, mirrored here</div></div>
+          </div>
+          <div class="muted small" style="margin:12px 0 6px">Agent</div>
+          <div style="display:flex;gap:6px"><span class="pill" style="background:#111;color:#fff">claude</span><span class="pill">codex</span></div>
+          <div class="muted small" style="margin-top:12px">Change either later in Settings → Plugins.</div>
+          <div style="margin-top:12px"><span class="btn pri">Start</span></div>
+        </div>
+      </div>
+      <div class="foot"><span><span class="d bg-mute"></span>Not watching any PRs</span><span><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> Merge guard on</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="pg">
+  <h3>2. Chat, empty</h3>
+  <p class="what">Where every task starts. Sending one starts the orchestrator agent, which plans and creates worktrees.</p>
+  <div class="pair">
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="seg"><span class="on"><svg style="width:12px;height:12px"><use href="#i-chat"/></svg>Chat</span><span><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board</span></span></div>
+        <div style="flex:1;display:grid;place-items:center;text-align:center;padding:24px"><div><div style="font-weight:600;margin-bottom:6px">What should get done?</div><div class="muted small">I'll plan it, start a worker per piece in its own worktree, and watch their PRs until they're ready for you.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;align-items:center"><span class="btn ghost">Close out my open PRs</span><span class="btn ghost">Fix the failing CI on main</span></div></div></div>
+        <div class="compose"><div class="ph">Describe a task…</div><div class="bar2"><span class="pill">claude</span><span class="sp"></span><span class="btn pri"><svg style="width:13px;height:13px"><use href="#i-send"/></svg>Send</span></div></div>
+      </div>
+      <div class="foot"><span><span class="d bg-mute"></span>Not watching any PRs</span><span><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> Merge guard on</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="pg">
+  <h3>3. Chat, working</h3>
+  <p class="what">Left: Chat style = chat. Right: Chat style = terminal. The red dot on Board means something there needs you.</p>
+  <div class="pair">
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="seg"><span class="on"><svg style="width:12px;height:12px"><use href="#i-chat"/></svg>Chat</span><span><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board <span class="redot">·</span></span></span></div>
+        <div class="chatlog">
+          <div class="msg me">Close out 4545, 4546, 4547 to merge-ready</div>
+          <div class="msg ai">Started 3 workers, one per PR, each in its own worktree. I'll watch CI and reviews and send fixes to the owner.</div>
+          <div class="msg ai"><b class="bad">#4547</b> CI failed again (Expo jest 3/3). Sent the log to <b>bug hotkey-oa</b>. Attempt 2 of 3.</div>
+          <div class="msg ai"><b class="warn">#4545</b> worker asks: keep the month rail on iPad?<div style="margin-top:6px;display:flex;gap:6px"><span class="btn">Yes</span><span class="btn">No</span></div></div>
+        </div>
+        <div class="compose"><div class="ph">Message the orchestrator…</div><div class="bar2"><span class="pill">claude</span><span class="sp"></span><span class="btn pri"><svg style="width:13px;height:13px"><use href="#i-send"/></svg>Send</span></div></div>
+      </div>
+      <div class="foot" data-foot></div>
+    </div>
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="seg"><span class="on"><svg style="width:12px;height:12px"><use href="#i-term"/></svg>Terminal</span><span><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board <span class="redot">·</span></span></span></div>
+        <div class="term">
+          <div class="m">orchestrator · claude · yimby</div>
+          <div><span class="c">›</span> close out 4545 4546 4547</div>
+          <div class="g">● worker-start ×3 (new-child)</div>
+          <div class="y">! #4547 CI failed → bug hotkey-oa (2/3)</div>
+          <div class="y">? #4545 asks: keep month rail on iPad?</div>
+          <div class="m">waiting for worker_done…</div>
+        </div>
+        <div class="compose"><div class="ph">Type to the orchestrator…</div><div class="bar2"><span class="btn ghost"><svg style="width:12px;height:12px"><use href="#i-ext"/></svg>Open full terminal</span><span class="sp"></span><span class="btn pri">Send</span></div></div>
+      </div>
+      <div class="foot" data-foot></div>
+    </div>
+  </div>
+</div>
+
+<div class="pg">
+  <h3>4. Board, narrow</h3>
+  <p class="what">Click a row to open its worktree. + starts a new task in Chat. Right: after the merge guard stopped an agent.</p>
+  <div class="pair">
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="ib"><svg><use href="#i-plus"/></svg></span><span class="seg"><span><svg style="width:12px;height:12px"><use href="#i-chat"/></svg>Chat</span><span class="on"><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board</span></span></div>
+        <div data-rows></div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="foot" data-foot></div>
+    </div>
+    <div class="screen side">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="ib"><svg><use href="#i-plus"/></svg></span><span class="seg"><span><svg style="width:12px;height:12px"><use href="#i-chat"/></svg>Chat</span><span class="on"><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board</span></span></div>
+        <div data-rows></div>
+        <div style="flex:1"></div>
+        <div class="guard"><svg><use href="#i-shield"/></svg><div style="flex:1"><b>Blocked</b> bug hotkey-oa tried <code>gh pr merge 4547</code>. Merging is yours.</div><span class="ib" style="color:#7a1d1d"><svg><use href="#i-x"/></svg></span></div>
+      </div>
+      <div class="foot"><span><span class="d bg-ok"></span>Polling GitHub · 60s</span><span><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> 1 block today</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="pg">
+  <h3>5. Board, wide</h3>
+  <p class="what">Same board as kanban columns, automatically, once the panel is about 640px or wider.</p>
+  <div class="pair">
+    <div class="screen side wide">
+      <div class="tabs" data-strip></div>
+      <div class="body">
+        <div class="hd"><span class="ttl">Orchestration</span><span class="pill">yimby</span><span class="sp"></span><span class="ib"><svg><use href="#i-plus"/></svg></span><span class="seg"><span><svg style="width:12px;height:12px"><use href="#i-chat"/></svg>Chat</span><span class="on"><svg style="width:12px;height:12px"><use href="#i-grid"/></svg>Board</span></span></div>
+        <div class="kb">
+          <div class="kc"><div class="kh">Needs you <span class="n">1</span></div><div class="kt"><span class="name">calendar month picker-oa</span><div class="l2">Asks: keep month rail on iPad?</div><div class="bdg"><span class="dot bg-warn"></span>#4545 · 2m</div></div></div>
+          <div class="kc"><div class="kh">Fixing <span class="n">1</span></div><div class="kt"><span class="name">bug hotkey-oa</span><div class="l2">CI red · attempt 2/3</div><div class="bdg"><span class="dot bg-bad"></span>#4547 · now</div></div></div>
+          <div class="kc"><div class="kh">Watching <span class="n">1</span></div><div class="kt"><span class="name">settings sync-oa</span><div class="l2">CI running</div><div class="bdg"><span class="dot bg-info"></span>#4551 · 5m</div></div></div>
+          <div class="kc"><div class="kh">Ready <span class="n">1</span></div><div class="kt"><span class="name">chat opening screen-oa</span><div class="l2">Ready to merge</div><div class="bdg"><span class="dot bg-ok"></span>#4546 · 14m</div></div></div>
+        </div>
+      </div>
+      <div class="foot" data-foot></div>
+    </div>
+  </div>
+</div>
+
+<div class="pg">
+  <h3>6. Settings</h3>
+  <p class="what">In Orca's Settings → Plugins. Everything the panel doesn't need day to day.</p>
+  <div class="pair">
+    <div class="screen settings">
+      <div style="font-weight:650;font-size:15px;margin-bottom:4px">Orchestration</div>
+      <div class="srow"><div><div class="k">Chat style</div><div class="d">How the Chat view shows the orchestrator</div></div><span class="seg"><span class="on">Chat</span><span>Terminal</span></span></div>
+      <div class="srow"><div><div class="k">Orchestrator agent</div><div class="d">Runs the plan and starts workers</div></div><span class="input">claude</span></div>
+      <div class="srow"><div><div class="k">Worker name suffix</div><div class="d">Added to every worktree it starts</div></div><span class="input">-oa</span></div>
+      <div class="srow"><div><div class="k">Check GitHub every</div><div class="d">Uses your gh login; no token needed</div></div><span class="input">60 seconds</span></div>
+      <div class="srow"><div><div class="k">Fix attempts before asking you</div><div class="d">Per failure, then it flags the PR</div></div><span class="input">3</span></div>
+      <div class="srow" style="border:0"><div><div class="k">Merge guard</div><div class="d">Blocks gh pr merge, force-push and pushes to main</div></div><span class="seg"><span class="on">On</span><span>Off</span></span></div>
+    </div>
+  </div>
+</div>
+
+<section class="issue" data-issue="8">
+  <h2><span class="num">8</span>Are these the pages?</h2>
+  <div class="row">
+    <div class="col"><div class="screen side" style="height:110px;display:grid;place-items:center;text-align:center;padding:16px"><div class="muted small">All six pages as drawn above.</div></div><div class="cap"><span class="pick">8A</span>Build these<span class="cost">Next: I write up the design</span></div></div>
+    <div class="col"><div class="screen side" style="height:110px;display:grid;place-items:center;text-align:center;padding:16px"><div class="muted small">Say what to change in the notes.</div></div><div class="cap"><span class="pick">8B</span>Change something<span class="cost">One more round</span></div></div>
+  </div>
+</section>
+
+<details class="archive">
+  <summary>Earlier rounds</summary>
+  <p>Round 1: 1A · 2C · 3A · 4B. Round 2: 6A kanban when wide · 5B fix: chat or board, one at a time. Round 3: 7A Chat | Board toggle in the panel. Composition: the task box moved into Chat (+ on the board opens it); the chat-or-terminal setting now picks how the Chat view looks.</p>
+</details>
+
+<script>
+(function () {
+  var ic = ["files","grid","branch","tasks","plug","activity","play","net","blocks"];
+  var strip = ic.map(function (n) { return '<span class="t' + (n === "net" ? " on" : "") + '"><svg><use href="#i-' + n + '"/></svg></span>'; }).join("") + '<span class="sp"></span><span class="t"><svg><use href="#i-panel"/></svg></span>';
+  document.querySelectorAll("[data-strip]").forEach(function (e) { e.innerHTML = strip; });
+  var foot = '<span><span class="d bg-ok"></span>Polling GitHub · 60s</span><span><svg style="width:13px;height:13px"><use href="#i-shield"/></svg> Merge guard on</span>';
+  document.querySelectorAll("[data-foot]").forEach(function (e) { e.innerHTML = foot; });
+  function row(c, n, p, l2, t) { return '<div class="item"><span class="dot ' + c + '"></span><div class="main"><div class="l1"><span class="name">' + n + '</span><span class="num">' + p + '</span></div><div class="l2">' + l2 + '</div></div><span class="right">' + t + '</span></div>'; }
+  function grp(t, n) { return '<div class="grp-h">' + t + ' <span class="n">' + n + '</span></div>'; }
+  var rows = grp("Needs you", 1) + row("bg-warn", "calendar month picker-oa", "#4545", "Asks: keep month rail on iPad?", "2m") + grp("Fixing", 1) + row("bg-bad", "bug hotkey-oa", "#4547", "CI red · attempt 2/3", "now") + grp("Watching", 1) + row("bg-info", "settings sync-oa", "#4551", "CI running", "5m") + grp("Ready for you", 1) + row("bg-ok", "chat opening screen-oa", "#4546", "Ready to merge", "14m");
+  document.querySelectorAll("[data-rows]").forEach(function (e) { e.innerHTML = rows; });
+})();
+</script>
+
+<section id="manual">
+  <h3>Manual copy</h3>
+  <textarea id="answer" readonly placeholder="Click options above. Your answer appears here."></textarea>
+  <div id="legend"></div>
+</section>
+
+<div id="bar">
+  <div id="groups" style="display:flex;flex-wrap:wrap;gap:10px 18px"></div>
+  <div class="actions">
+    <span id="count"></span>
+    <input id="line" readonly aria-label="Answer line">
+    <button id="copy">Copy my picks</button>
+    <button id="clear">Clear</button>
+    <span id="toast"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = document.body.dataset.key || location.pathname;
+  var state = { picks: {}, notes: {} };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    state.picks = saved.picks || {};
+    state.notes = saved.notes || {};
+  } catch (e) {}
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function issueOf(code) { var m = /^(\d+)/.exec(code); return m ? m[1] : code; }
+
+  var issues = [];
+  var options = {};
+  var labels = {};
+  var cards = {};
+
+  document.querySelectorAll(".issue").forEach(function (sec) {
+    var id = sec.dataset.issue;
+    var title = sec.querySelector("h2");
+    labels[id] = title ? title.textContent.replace(/^\s*\d+\s*/, "").trim() : id;
+    issues.push(id);
+    options[id] = [];
+
+    sec.querySelectorAll(".col").forEach(function (col) {
+      var chip = col.querySelector(".cap .pick");
+      if (!chip) return;
+      var code = chip.textContent.trim();
+      if (!/^\d+[A-Za-z]/.test(code)) return;
+      var name = (chip.nextSibling && chip.nextSibling.textContent || "").trim();
+      col.dataset.opt = code;
+      var tick = document.createElement("span");
+      tick.className = "tick";
+      tick.textContent = "✓";
+      col.appendChild(tick);
+      col.addEventListener("click", function (ev) {
+        if (ev.target.closest("textarea, input, a, select")) return;
+        choose(code);
+      });
+      cards[code] = col;
+      options[id].push({ code: code, name: name });
+    });
+
+    if (sec.dataset.keep !== "drawn") options[id].push({ code: id + "-keep", name: "keep as-is" });
+
+    var ta = document.createElement("textarea");
+    ta.className = "notes";
+    ta.dataset.issue = id;
+    ta.placeholder = "Notes on " + id + ": what's off, or what would make it the one";
+    ta.value = state.notes[id] || "";
+    ta.addEventListener("input", function () {
+      if (ta.value.trim()) state.notes[id] = ta.value; else delete state.notes[id];
+      save();
+      render();
+    });
+    sec.appendChild(ta);
+  });
+
+  var groups = document.getElementById("groups");
+  issues.forEach(function (id) {
+    var g = document.createElement("div");
+    g.className = "grp";
+    var b = document.createElement("b");
+    b.textContent = id;
+    g.appendChild(b);
+    options[id].forEach(function (o) {
+      var btn = document.createElement("button");
+      btn.dataset.code = o.code;
+      btn.title = o.name;
+      btn.textContent = /-keep$/.test(o.code) ? "keep" : o.code.slice(id.length);
+      btn.addEventListener("click", function () {
+        choose(o.code);
+        if (cards[o.code]) cards[o.code].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      });
+      g.appendChild(btn);
+    });
+    groups.appendChild(g);
+  });
+
+  document.getElementById("legend").textContent = issues.map(function (id) {
+    return id + "  " + labels[id] + "\n" + options[id].map(function (o) {
+      return "    " + o.code + "  " + o.name;
+    }).join("\n");
+  }).join("\n");
+
+  function choose(code) {
+    var id = issueOf(code);
+    if (state.picks[id] === code) delete state.picks[id]; else state.picks[id] = code;
+    save();
+    render();
+  }
+
+  function answerLine() {
+    return issues.filter(function (id) { return state.picks[id]; })
+      .map(function (id) { return state.picks[id]; }).join("  ");
+  }
+
+  function fullAnswer() {
+    var out = answerLine();
+    var notes = issues.filter(function (id) { return state.notes[id] && state.notes[id].trim(); })
+      .map(function (id) { return id + " (" + labels[id] + "): " + state.notes[id].trim().replace(/\s*\n\s*/g, " / "); });
+    if (notes.length) out += "\n\n" + notes.join("\n");
+    return out;
+  }
+
+  function render() {
+    Object.keys(cards).forEach(function (code) {
+      cards[code].classList.toggle("picked", state.picks[issueOf(code)] === code);
+    });
+    document.querySelectorAll("#groups button").forEach(function (btn) {
+      btn.classList.toggle("on", state.picks[issueOf(btn.dataset.code)] === btn.dataset.code);
+    });
+    var n = issues.filter(function (id) { return state.picks[id]; }).length;
+    document.getElementById("count").textContent = n + " / " + issues.length;
+    document.getElementById("line").value = answerLine();
+    document.getElementById("answer").value = fullAnswer();
+  }
+
+  function flash(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    setTimeout(function () { t.textContent = ""; }, 2500);
+  }
+
+  function fallbackCopy() {
+    var ta = document.getElementById("answer");
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    if (ok) flash("copied");
+    else { ta.scrollIntoView({ block: "center" }); flash("press ⌘C"); }
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = fullAnswer();
+    if (!text) { flash("nothing picked"); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { flash("copied"); }, fallbackCopy);
+    } else fallbackCopy();
+  });
+
+  document.getElementById("clear").addEventListener("click", function () {
+    state = { picks: {}, notes: {} };
+    document.querySelectorAll("textarea.notes").forEach(function (ta) { ta.value = ""; });
+    save();
+    render();
+  });
+
+  ["line", "answer"].forEach(function (id) {
+    document.getElementById(id).addEventListener("focus", function (ev) { ev.target.select(); });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
