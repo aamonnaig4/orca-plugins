@@ -102,7 +102,7 @@ test('settings.json carries the picked model, effort, fast mode and permission m
   assert.equal(settings.effortLevel, 'high')
   assert.equal(settings.fastMode, true)
   assert.equal(settings.permissions.defaultMode, 'acceptEdits')
-  assert.equal(settings.permissions.allow.length, 5)
+  assert.equal(settings.permissions.allow.length, 7)
 })
 
 test('Manual is stored as Claude\'s default mode and plan mode never becomes a Claude permission mode', () => {
@@ -140,7 +140,7 @@ test('the worker-start commands in AGENTS.md carry the worker flags', async () =
   assert.equal(agents.split('--agent claude --model opus --effort medium --worktree').length - 1, 2)
 })
 
-test('settings.json lets orca out of the sandbox and allows the five commands', async () => {
+test('settings.json lets orca out of the sandbox and allows the five commands and memory.md', async () => {
   const m = memory()
   const home = await ensureHome(m.deps, OPTS)
   const settings = JSON.parse(m.files.get(`${home}/.claude/settings.json`))
@@ -150,7 +150,9 @@ test('settings.json lets orca out of the sandbox and allows the five commands', 
     'Bash(gh:*)',
     'Bash(./bin/say:*)',
     'Bash(./bin/tell:*)',
-    'Read(board.md)'
+    'Read(board.md)',
+    'Read(memory.md)',
+    'Edit(memory.md)'
   ])
 })
 
@@ -595,4 +597,47 @@ test('readOutbox returns a message whose file cannot be removed once, and the ot
   assert.equal(texts.filter((t) => t === 'first').length, 1)
   assert.equal(texts.filter((t) => t === 'third').length, 1)
   assert.ok(m.files.has(stuck))
+})
+
+test('ensureHome creates memory.md when it is missing', async () => {
+  const m = memory()
+  const home = await ensureHome(m.deps, OPTS)
+  assert.ok(m.files.get(`${home}/memory.md`).startsWith('# Orchestrator memory\n'))
+  assert.equal(m.writes.filter((p) => p === `${home}/memory.md`).length, 1)
+  await ensureHome(m.deps, OPTS)
+  assert.equal(m.writes.filter((p) => p === `${home}/memory.md`).length, 1)
+})
+
+test('ensureHome never overwrites an existing memory.md, even an empty one', async () => {
+  for (const kept of ['# Orchestrator memory\n\n- 2026-11-15: use squash PRs\n', '']) {
+    const m = memory({ '/h/.orca-orchestration/home/memory.md': kept })
+    const home = await ensureHome(m.deps, OPTS)
+    assert.equal(m.files.get(`${home}/memory.md`), kept)
+    assert.equal(m.writes.includes(`${home}/memory.md`), false)
+  }
+})
+
+test('ensureHome keeps a real memory.md on disk untouched', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'orch-mem-'))
+  try {
+    const deps = { ...nodeDeps, home: () => dir }
+    const home = await ensureHome(deps, OPTS)
+    const first = await readFile(`${home}/memory.md`, 'utf8')
+    assert.ok(first.includes('Orchestrator memory'))
+    await writeFile(`${home}/memory.md`, 'mine\n')
+    await ensureHome(deps, OPTS)
+    assert.equal(await readFile(`${home}/memory.md`, 'utf8'), 'mine\n')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('writeBoard puts the Best match section right under the title', async () => {
+  const m = memory()
+  const md = '# Board · updated X\n\n## Building\n\n- a\n'
+  assert.equal(await writeBoard(m.deps, '/h', md, { request: 'fix #7', match: { kind: 'one', name: 'feat', key: 'k', by: 'PR' } }), true)
+  assert.equal(m.files.get('/h/board.md'), "# Board · updated X\n\n## Best match for the latest request\n\nRequest: 'fix #7'\nBest match: feat (by PR)\n\n## Building\n\n- a\n")
+  assert.equal(await writeBoard(m.deps, '/h', md, { request: 'fix #7', match: { kind: 'one', name: 'feat', key: 'k', by: 'PR' } }), false)
+  assert.equal(await writeBoard(m.deps, '/h', md), true)
+  assert.equal(m.files.get('/h/board.md'), md)
 })

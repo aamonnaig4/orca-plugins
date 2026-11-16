@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { OrcaWorkerApi, PluginEvents, PluginHooks } from 'orca/worker'
 import type { Bins, Deps, Settings } from './deps.ts'
-import { DEFAULT_SETTINGS, EFFORTS, FIX_MODES, MODELS, NO_AGENT, PERMISSION_MODES, SCOPES, nodeDeps, readSettings, resolveBins } from './deps.ts'
+import { DEFAULT_SETTINGS, EFFORTS, ESCALATIONS, FIX_MODES, MODELS, NO_AGENT, PERMISSION_MODES, SCOPES, nodeDeps, readSettings, resolveBins } from './deps.ts'
 import { createCli } from './orcacli.ts'
 import type { AgentEntry } from './agents.ts'
 import { AGENT_CATALOG, detectAgents } from './agents.ts'
@@ -165,6 +165,9 @@ function validateSettings(patch: Record<string, unknown>): Partial<Settings> {
     } else if (key === 'attempts') {
       if (typeof value !== 'number' || !ATTEMPTS.includes(value)) throw invalid('attempts must be 1, 2, 3 or 5')
       out.attempts = value
+    } else if (key === 'escalations') {
+      if (typeof value !== 'number' || !ESCALATIONS.includes(value)) throw invalid('escalations must be 0, 1, 2 or 3')
+      out.escalations = value
     } else if (key === 'onCi' || key === 'onConflict' || key === 'onReview') {
       if (typeof value !== 'string' || !(FIX_MODES as string[]).includes(value)) throw invalid(`${key} must be fix, ask or ignore`)
       out[key] = value as Settings['onCi']

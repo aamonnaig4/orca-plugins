@@ -133,6 +133,7 @@ export type Settings = {
   suffix: string
   intervalSec: number
   attempts: number
+  escalations: number
   guard: boolean
   onCi: FixMode
   onConflict: FixMode
@@ -152,6 +153,7 @@ export const DEFAULT_SETTINGS: Settings = {
   suffix: '-oa',
   intervalSec: 60,
   attempts: 3,
+  escalations: 2,
   guard: true,
   onCi: 'fix',
   onConflict: 'fix',
@@ -167,6 +169,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const INTERVALS = [30, 60, 120, 300]
 const ATTEMPTS = [1, 2, 3, 5]
+export const ESCALATIONS = [0, 1, 2, 3]
 export const FIX_MODES: FixMode[] = ['fix', 'ask', 'ignore']
 export const NO_AGENT: Settings['noAgent'][] = ['start', 'ask']
 export const SCOPES: Settings['scope'][] = ['all', 'workers']
@@ -198,6 +201,7 @@ export function readSettings(raw: Record<string, unknown>): Settings {
     suffix: text(raw.suffix, d.suffix),
     intervalSec: choice(raw.intervalSec, INTERVALS, d.intervalSec),
     attempts: choice(raw.attempts, ATTEMPTS, d.attempts),
+    escalations: choice(raw.escalations, ESCALATIONS, d.escalations),
     guard: flag(raw.guard, d.guard),
     onCi: oneOf(raw.onCi, FIX_MODES, d.onCi),
     onConflict: oneOf(raw.onConflict, FIX_MODES, d.onConflict),

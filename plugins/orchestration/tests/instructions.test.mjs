@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { boardMarkdown, standingInstructions } from '../src/instructions.ts'
+import { bestMatch, boardMarkdown, matchLine, matchSection, standingInstructions } from '../src/instructions.ts'
 
 const O = { marker: 'orch:abc', workerAgent: 'codex', suffix: '-oa' }
 
@@ -155,4 +155,83 @@ test('boardMarkdown says whether an agent is in each session', () => {
   assert.ok(lines.find((l) => l.includes('with ·')).includes('agent claude'))
   assert.ok(lines.find((l) => l.includes('without')).includes('no agent'))
   assert.ok(!boardMarkdown([ROW], [], 0).includes('agent'))
+})
+
+function line(name, over = {}) {
+  return { name, key: `/w/${name}`, project: 'p', lane: 'Building', phrase: 'x', branch: name, pr: null, dispatchId: null, started: 'you', ...over }
+}
+
+const LINES = [
+  line('billing', { pr: 12, branch: 'fix/billing-tax' }),
+  line('search', { pr: 34, branch: 'feat/search' }),
+  line('search-ui', { pr: null, branch: 'search-ui' }),
+  line('home', { branch: 'main' })
+]
+
+test('bestMatch finds exactly one workspace by PR number first', () => {
+  assert.deepEqual(bestMatch('please fix the tests on PR #34 in billing', LINES), { kind: 'one', name: 'search', key: '/w/search', by: 'PR' })
+  assert.deepEqual(bestMatch('look at pr 12', LINES), { kind: 'one', name: 'billing', key: '/w/billing', by: 'PR' })
+  assert.deepEqual(bestMatch('see https://github.com/o/r/pull/12', LINES).name, 'billing')
+})
+
+test('bestMatch falls back to branch name, then workspace name', () => {
+  assert.deepEqual(bestMatch('rebase fix/billing-tax on main', LINES), { kind: 'one', name: 'billing', key: '/w/billing', by: 'branch' })
+  assert.deepEqual(bestMatch('Billing needs a retry button', LINES), { kind: 'one', name: 'billing', key: '/w/billing', by: 'name' })
+})
+
+test('bestMatch says none when nothing matches, and ignores bare numbers, main and partial words', () => {
+  assert.deepEqual(bestMatch('fix the 12 failing tests', LINES), { kind: 'none' })
+  assert.deepEqual(bestMatch('merge main into it', LINES), { kind: 'none' })
+  assert.deepEqual(bestMatch('researching a new idea', LINES), { kind: 'none' })
+  assert.deepEqual(bestMatch('start a new pricing page', LINES), { kind: 'none' })
+  assert.deepEqual(bestMatch('anything', []), { kind: 'none' })
+})
+
+test('bestMatch says ambiguous when two or more match in the deciding tier', () => {
+  assert.deepEqual(bestMatch('compare #12 with #34', LINES), { kind: 'ambiguous', names: ['billing', 'search'], by: 'PR' })
+  assert.deepEqual(bestMatch('the feat/search and search-ui work', LINES), { kind: 'ambiguous', names: ['search', 'search-ui'], by: 'branch' })
+  assert.deepEqual(bestMatch('the search and search-ui work', LINES), { kind: 'one', name: 'search-ui', key: '/w/search-ui', by: 'branch' })
+  const twins = [line('api', { key: '/a/api' }), line('api', { key: '/b/api' })]
+  assert.equal(bestMatch('api is slow', twins).kind, 'ambiguous')
+})
+
+test('matchLine and matchSection print the three forms', () => {
+  assert.equal(matchLine({ kind: 'one', name: 'billing', key: 'k', by: 'branch' }), 'Best match: billing (by branch)')
+  assert.equal(matchLine({ kind: 'none' }), 'Best match: none')
+  assert.equal(matchLine({ kind: 'ambiguous', names: ['a', 'b'], by: 'name' }), 'Best match: ambiguous (a, b)')
+  const section = matchSection('fix\n  #12   now', { kind: 'none' })
+  assert.equal(section, "## Best match for the latest request\n\nRequest: 'fix #12 now'\nBest match: none\n")
+  assert.ok(matchSection('x'.repeat(200), { kind: 'none' }).includes(`'${'x'.repeat(79)}…'`))
+})
+
+test('standingInstructions tells the orchestrator to trust the Best match line', () => {
+  const text = standingInstructions(O)
+  assert.ok(text.includes('The panel matches on PR number first, then branch name, then workspace name'))
+  assert.ok(text.includes('Trust that line'))
+  assert.ok(text.includes('`Best match: <workspace> (by PR|branch|name)`: exactly one workspace matches. Use it'))
+  assert.ok(text.includes('`Best match: none`: nothing matches. Start a new worker with worker-start'))
+  assert.ok(text.includes('`Best match: ambiguous (<list>)`: two or more workspaces match. Ask with `./bin/say question`'))
+  assert.ok(text.includes('keeping the -oa name suffix'))
+  assert.ok(!text.includes('If you are not sure whether one exists'))
+})
+
+test('standingInstructions limits questions, adds memory, and tightens the worker rules', () => {
+  const text = standingInstructions(O)
+  assert.ok(text.indexOf('Read `memory.md`') < text.indexOf('orca skills get orchestration'))
+  assert.ok(text.includes('1. Read `memory.md` in this folder before anything else.'))
+  assert.ok(text.includes('Append one short dated line'))
+  assert.ok(text.includes('whenever the user answers a question or a fix pattern works'))
+  assert.ok(text.includes('Ask the user with `./bin/say question` only for one of these'))
+  assert.ok(text.includes('two or more workspace matches'))
+  assert.ok(text.includes('anything destructive'))
+  assert.ok(text.includes('work outside the repo the request is about'))
+  assert.ok(text.includes("When a worker asks you a routine question, answer it from `memory.md`"))
+  assert.ok(text.includes('Never apply database migrations or run production deploys.'))
+  assert.ok(text.includes("Tell each worker to run the repo's own tests before every push."))
+  assert.ok(text.includes('CI still failing on #<n> (escalation <round> of <rounds>)'))
+})
+
+test('standingInstructions says what to do when the Best match line is for a later message', () => {
+  const text = standingInstructions(O)
+  assert.ok(text.includes('If it still names a later message, match that message yourself the same way'))
 })

@@ -766,8 +766,8 @@ test('settings.save reads with {}, validates every key and value, and rewrites t
   try {
     await ticked(worker)
     const all = await worker.request('settings.save', {})
-    assert.deepEqual(all, { orchestratorAgent: 'claude', workerAgent: '', suffix: '-oa', intervalSec: 60, attempts: 3, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'start', scope: 'all', model: '', effort: '', fast: false, plan: false, permissionMode: '' })
-    for (const bad of [{ intervalSec: 7 }, { attempts: 4 }, { guard: 'yes' }, { onCi: 'maybe' }, { onConflict: true }, { onReview: '' }, { noAgent: 'ignore' }, { scope: 'mine' }, { autoFixYours: true }, { workerAgent: 'nope' }, { model: 'gpt' }, { effort: 'max' }, { permissionMode: 'plan' }, { fast: 'on' }, { plan: 1 }, { suffix: 'a b' }, { suffix: 'x'.repeat(40) }, { orchestratorAgent: 3 }]) {
+    assert.deepEqual(all, { orchestratorAgent: 'claude', workerAgent: '', suffix: '-oa', intervalSec: 60, attempts: 3, escalations: 2, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'start', scope: 'all', model: '', effort: '', fast: false, plan: false, permissionMode: '' })
+    for (const bad of [{ intervalSec: 7 }, { attempts: 4 }, { escalations: 4 }, { escalations: '2' }, { guard: 'yes' }, { onCi: 'maybe' }, { onConflict: true }, { onReview: '' }, { noAgent: 'ignore' }, { scope: 'mine' }, { autoFixYours: true }, { workerAgent: 'nope' }, { model: 'gpt' }, { effort: 'max' }, { permissionMode: 'plan' }, { fast: 'on' }, { plan: 1 }, { suffix: 'a b' }, { suffix: 'x'.repeat(40) }, { orchestratorAgent: 3 }]) {
       await rejectsWith(worker.request('settings.save', bad), 'invalid_params')
     }
     await rejectsWith(worker.request('settings.save', [1]), 'invalid_params')
@@ -776,7 +776,7 @@ test('settings.save reads with {}, validates every key and value, and rewrites t
     assert.deepEqual(await worker.request('settings.save', {}), all)
     assert.equal('intervalSec' in worker.host.data().settings, false)
     const next = await worker.request('settings.save', { intervalSec: 120, workerAgent: 'codex', suffix: '-zz' })
-    assert.deepEqual(next, { orchestratorAgent: 'claude', workerAgent: 'codex', suffix: '-zz', intervalSec: 120, attempts: 3, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'start', scope: 'all', model: '', effort: '', fast: false, plan: false, permissionMode: '' })
+    assert.deepEqual(next, { orchestratorAgent: 'claude', workerAgent: 'codex', suffix: '-zz', intervalSec: 120, attempts: 3, escalations: 2, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'start', scope: 'all', model: '', effort: '', fast: false, plan: false, permissionMode: '' })
     const modes = await worker.request('settings.save', { onCi: 'ask', onConflict: 'ignore', onReview: 'ask', noAgent: 'ask', scope: 'workers' })
     assert.deepEqual({ onCi: modes.onCi, onConflict: modes.onConflict, onReview: modes.onReview, noAgent: modes.noAgent, scope: modes.scope }, { onCi: 'ask', onConflict: 'ignore', onReview: 'ask', noAgent: 'ask', scope: 'workers' })
     assert.equal(worker.host.data().settings.onConflict, 'ignore')

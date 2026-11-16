@@ -8,13 +8,13 @@ import { failedLogTail, prFor, readRepo } from './github.ts'
 import type { Column, Lane, NeedKind, PlanStep, Tone } from './board.ts'
 import { columnOf, labelOf, place } from './board.ts'
 import type { Ledger, RouteEvent } from './events.ts'
-import { EMPTY_LEDGER, diffEvents, fixingFor, recordSent, recordSkipped, resetAttempts } from './events.ts'
+import { EMPTY_LEDGER, diffEvents, fixingFor, normalizeLedger, recordSent, recordSkipped, resetAttempts } from './events.ts'
 import { messageFor } from './messages.ts'
 import type { createDelivery, SendResult } from './deliver.ts'
 import { homePath, readOutbox, writeBoard } from './home.ts'
 import type { OutMsg } from './home.ts'
 import type { BoardLine, ProjectLine } from './instructions.ts'
-import { boardMarkdown } from './instructions.ts'
+import { bestMatch, boardMarkdown } from './instructions.ts'
 import type { NeedCard, ToolCall } from './needs.ts'
 import { approvalCard, doingText, reconcile } from './needs.ts'
 import type { createOrchestrator } from './orchestrator.ts'
@@ -119,19 +119,19 @@ const START_AGAIN_MS = 30 * 60 * 1000
 type Modes = { ci: FixMode; conflict: FixMode; review: FixMode }
 
 function modeFor(modes: Modes, ev: RouteEvent): FixMode {
-  if (ev.kind === 'ci') return modes.ci
+  if (ev.kind === 'ci' || ev.kind === 'escalate') return modes.ci
   if (ev.kind === 'conflict') return modes.conflict
   return modes.review
 }
 
 function askDetail(events: RouteEvent[]): string {
   const parts: string[] = []
-  if (events.some((ev) => ev.kind === 'ci')) parts.push('CI failed')
+  if (events.some((ev) => ev.kind === 'ci' || ev.kind === 'escalate')) parts.push('CI failed')
   if (events.some((ev) => ev.kind === 'conflict')) parts.push('Merge conflicts')
   let comments = 0
   for (const ev of events) {
     if (ev.kind === 'bot-batch') comments += ev.items.length
-    else if (ev.kind !== 'ci' && ev.kind !== 'conflict') comments += 1
+    else if (ev.kind !== 'ci' && ev.kind !== 'conflict' && ev.kind !== 'escalate') comments += 1
   }
   if (comments > 0) parts.push(comments === 1 ? '1 review comment' : `${comments} review comments`)
   return parts.join(' · ')
@@ -267,7 +267,7 @@ export function createWatcher(o: {
   const staleKeys = new Set<string>()
   const repoData = new Map<string, RepoData>()
   const readBranches = new Map<string, Set<string>>()
-  const limits = new Map<string, number>()
+  const limits = new Map<string, { used: number; rounds: number }>()
   const unreachable = new Map<string, Unreach>()
   const asks = new Map<string, RouteEvent[]>()
   const approved = new Set<string>()
@@ -777,8 +777,8 @@ export function createWatcher(o: {
   }
 
   async function logsFor(ev: RouteEvent, pr: PrState): Promise<{ check: string; tail: string }[]> {
-    if (ev.kind !== 'ci' || o.bins.gh === null) return []
-    const tailKey = `${pr.repo}:${ev.key}`
+    if ((ev.kind !== 'ci' && ev.kind !== 'escalate') || o.bins.gh === null) return []
+    const tailKey = `${pr.repo}:ci:${prKeyOf(pr)}:${ev.sha}`
     const known = tails.get(tailKey)
     if (known) return known
     const logs: { check: string; tail: string }[] = []
@@ -830,10 +830,12 @@ export function createWatcher(o: {
       maxAttempts: s.attempts,
       ci: modes.ci !== 'ignore',
       conflict: modes.conflict !== 'ignore',
-      review: modes.review !== 'ignore'
+      review: modes.review !== 'ignore',
+      escalate: o.orchestrator.session() !== null,
+      rounds: s.escalations
     })
     ledgers = { ...ledgers, [prKey]: diff.ledger }
-    if (diff.limitHit) limits.set(session.key, diff.ledger.ciSends[prKey] ?? s.attempts)
+    if (diff.limitHit) limits.set(session.key, { used: diff.ledger.ciSends[prKey] ?? s.attempts, rounds: diff.ledger.escalations[prKey]?.rounds ?? 0 })
     else limits.delete(session.key)
     if (diff.events.length === 0) clearOldMark(session.key)
     const held: RouteEvent[] = []
@@ -841,6 +843,13 @@ export function createWatcher(o: {
     for (const ev of diff.events) {
       if (modeFor(modes, ev) === 'ask' && !approved.has(ev.key)) {
         held.push(ev)
+        continue
+      }
+      if (ev.kind === 'escalate') {
+        if (!(await escalate(session, pr, ev))) {
+          const ledger = ledgers[prKey] ?? EMPTY_LEDGER
+          limits.set(session.key, { used: ledger.ciSends[prKey] ?? s.attempts, rounds: ledger.escalations[prKey]?.rounds ?? 0 })
+        }
         continue
       }
       if (stopped || stillUnreachable(session)) continue
@@ -869,6 +878,22 @@ export function createWatcher(o: {
       launched.delete(session.key)
     }
     return result
+  }
+
+  async function escalate(session: Session, pr: PrState, ev: RouteEvent): Promise<boolean> {
+    const orch = o.orchestrator.session()
+    if (!orch) return false
+    try {
+      const text = messageFor(ev, pr, { logs: await logsFor(ev, pr), session: session.name })
+      const result = await o.delivery.send(orch, text.subject, text.body)
+      if (result === 'unreachable') return false
+    } catch {
+      return false
+    }
+    const prKey = prKeyOf(pr)
+    ledgers = { ...ledgers, [prKey]: recordSent(ledgers[prKey] ?? EMPTY_LEDGER, pr, ev, o.deps.now()) }
+    approved.delete(ev.key)
+    return true
   }
 
   async function autoStart(session: Session): Promise<boolean> {
@@ -914,9 +939,10 @@ export function createWatcher(o: {
         const terminal = session.agent.terminalId
         wanted.push(approvalCard(session, terminal ? tools.get(terminal) : undefined, now))
       }
-      const used = limits.get(session.key)
-      if (used !== undefined) {
-        wanted.push({ id: `attempts:${session.key}`, key: session.key, kind: 'attempts', title: session.name, detail: `${used} fix attempts used`, actions: ['retry', 'details'], at: now, resolved: null })
+      const limit = limits.get(session.key)
+      if (limit !== undefined) {
+        const detail = limit.rounds > 0 ? `${limit.used} fix attempts and ${limit.rounds} orchestrator rounds used` : `${limit.used} fix attempts used`
+        wanted.push({ id: `attempts:${session.key}`, key: session.key, kind: 'attempts', title: session.name, detail, actions: ['retry', 'details'], at: now, resolved: null })
       }
       const held = asks.get(session.key)
       if (held && held.length > 0) {
@@ -1002,12 +1028,19 @@ export function createWatcher(o: {
     for (const key of [...launched.keys()]) if (!live.has(key)) launched.delete(key)
   }
 
+  function latestRequest(): string | null {
+    for (let i = chat.length - 1; i >= 0; i--) if (chat[i].from === 'you' && chat[i].kind === 'text') return chat[i].text
+    return null
+  }
+
   async function stepBoard(view: ViewModel): Promise<void> {
     if (!o.orchestrator.record()) return
     const body = boardBodyOf([...view.rows, ...view.idle])
-    const text = JSON.stringify(body)
+    const request = latestRequest()
+    const text = JSON.stringify({ body, request })
     if (text === boardBody) return
-    await writeBoard(o.deps, homeDir(), boardMarkdown(body.lines, body.projects, o.deps.now()))
+    const latest = request === null ? null : { request, match: bestMatch(request, body.lines) }
+    await writeBoard(o.deps, homeDir(), boardMarkdown(body.lines, body.projects, o.deps.now()), latest)
     boardBody = text
   }
 
@@ -1119,7 +1152,8 @@ export function createWatcher(o: {
       }
     }
     chat = arrayOf<ChatItem>(await read('chat'), isChat).slice(-CHAT_CAP)
-    ledgers = recordOf<Ledger>(await read('ledgers'), (v) => isObj(v) && isObj(v.sent) && isObj(v.ciSends) && isObj(v.firstFail) && isObj(v.last))
+    const stored = recordOf<Ledger>(await read('ledgers'), (v) => isObj(v) && isObj(v.sent) && isObj(v.ciSends) && isObj(v.firstFail) && isObj(v.last))
+    ledgers = Object.fromEntries(Object.entries(stored).map(([k, v]) => [k, normalizeLedger(v)]))
     cards = arrayOf<NeedCard>(await read('cards'), isCard)
     autofix = recordOf<AutoFix>(await read('autofix'), isObj)
     tracked = arrayOf<string>(await read('tracked'), (v) => typeof v === 'string')
@@ -1242,7 +1276,8 @@ export function createWatcher(o: {
         cards = cards.map((c) => (c.id === card.id && c.at === card.at && card.resolved === null ? { ...card } : c))
       }
       await persist()
-      publish()
+      const view = publish()
+      if (item.from === 'you') await attempt(() => stepBoard(view))
       return item.id
     },
     async setCardDetail(id: string, detail: string): Promise<void> {

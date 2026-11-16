@@ -1,7 +1,8 @@
 import { chmod, lstat, open } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import type { Deps, Settings } from './deps.ts'
-import { standingInstructions } from './instructions.ts'
+import { matchSection, standingInstructions } from './instructions.ts'
+import type { BestMatch } from './instructions.ts'
 import { parsePlan } from './board.ts'
 import type { PlanStep } from './board.ts'
 
@@ -16,7 +17,7 @@ const MAX_MESSAGE_BYTES = 16384
 const MAX_HEADER_BYTES = 4096
 const MAX_READ_BYTES = MAX_MESSAGE_BYTES + 2 * MAX_HEADER_BYTES
 
-const ALLOW = ['Bash(orca:*)', 'Bash(gh:*)', 'Bash(./bin/say:*)', 'Bash(./bin/tell:*)', 'Read(board.md)']
+const ALLOW = ['Bash(orca:*)', 'Bash(gh:*)', 'Bash(./bin/say:*)', 'Bash(./bin/tell:*)', 'Read(board.md)', 'Read(memory.md)', 'Edit(memory.md)']
 
 export type Launch = { model: string; effort: string; fast: boolean; mode: string }
 
@@ -123,6 +124,13 @@ const TELL = [
   ''
 ].join('\n')
 
+export const MEMORY_TEMPLATE = [
+  '# Orchestrator memory',
+  '',
+  'Read this file first in every session. Append one short dated line, such as "- 2026-11-15: Aamon wants draft PRs for docs-only changes", whenever Aamon answers a question or a fix pattern works. Never rewrite or delete earlier lines.',
+  ''
+].join('\n')
+
 export function homePath(deps: Deps): string {
   return `${deps.home()}/.orca-orchestration/home`
 }
@@ -145,6 +153,12 @@ async function putIfChanged(deps: Deps, path: string, text: string, mode?: numbe
   if (mode !== undefined && real) await chmod(path, mode)
 }
 
+async function createIfMissing(deps: Deps, path: string, text: string): Promise<void> {
+  if ((await lstat(path).catch(() => null)) !== null) return
+  if ((await deps.fs.read(path)) !== null) return
+  await deps.fs.write(path, text)
+}
+
 export async function ensureHome(
   deps: Deps,
   o: HomeOptions
@@ -156,6 +170,7 @@ export async function ensureHome(
   await putIfChanged(deps, `${home}/.claude/settings.json`, `${JSON.stringify(claudeSettings(o.launch ?? NO_LAUNCH), null, 2)}\n`)
   await putIfChanged(deps, `${home}/bin/say`, SAY, 0o755)
   await putIfChanged(deps, `${home}/bin/tell`, TELL, 0o755)
+  await createIfMissing(deps, `${home}/memory.md`, MEMORY_TEMPLATE)
   return home
 }
 
@@ -276,9 +291,23 @@ export async function readOutbox(deps: Deps, home: string): Promise<OutMsg[]> {
   return out
 }
 
-export async function writeBoard(deps: Deps, home: string, markdown: string): Promise<boolean> {
+function withMatch(markdown: string, latest: { request: string; match: BestMatch } | null): string {
+  if (latest === null) return markdown
+  const cut = markdown.indexOf('\n\n')
+  const section = matchSection(latest.request, latest.match)
+  if (cut < 0) return `${markdown}\n\n${section}`
+  return `${markdown.slice(0, cut + 2)}${section}\n${markdown.slice(cut + 2)}`
+}
+
+export async function writeBoard(
+  deps: Deps,
+  home: string,
+  markdown: string,
+  latest: { request: string; match: BestMatch } | null = null
+): Promise<boolean> {
   const path = `${home}/board.md`
-  if ((await deps.fs.read(path)) === markdown) return false
-  await deps.fs.write(path, markdown)
+  const text = withMatch(markdown, latest)
+  if ((await deps.fs.read(path)) === text) return false
+  await deps.fs.write(path, text)
   return true
 }

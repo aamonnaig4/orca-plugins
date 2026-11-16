@@ -1,5 +1,8 @@
 import type { PrState } from './github.ts'
 import type { RouteEvent } from './events.ts'
+import { ESCALATION_BACKOFF_MS } from './events.ts'
+
+const ESCALATION_WAIT = `${ESCALATION_BACKOFF_MS / 60000} minutes`
 
 const CLOSING = 'Fix it, push, and do not merge. Start any reply you post on the PR with [agent].'
 
@@ -12,17 +15,40 @@ function finish(lines: string[]): string {
   return [...lines, '', CLOSING].join('\n')
 }
 
-export function messageFor(ev: RouteEvent, pr: PrState, extra: { logs?: { check: string; tail: string }[] }): { subject: string; body: string } {
+function failureLines(checks: { name: string; url: string | null }[], logs: { check: string; tail: string }[]): string[] {
+  const lines: string[] = []
+  if (checks.length > 0) lines.push('', 'Failed checks:', ...checks.map((c) => `- ${c.name}: ${c.url ?? 'no link'}`))
+  for (const log of logs) {
+    const f = fence(log.tail)
+    lines.push('', `Log tail for ${log.check}:`, f, log.tail, f)
+  }
+  return lines
+}
+
+export function messageFor(
+  ev: RouteEvent,
+  pr: PrState,
+  extra: { logs?: { check: string; tail: string }[]; session?: string }
+): { subject: string; body: string } {
   const n = ev.pr
   switch (ev.kind) {
     case 'ci': {
-      const lines = [`CI failed on #${n}: ${pr.url}`, `Head commit: ${ev.sha}`]
-      if (ev.checks.length > 0) lines.push('', 'Failed checks:', ...ev.checks.map((c) => `- ${c.name}: ${c.url ?? 'no link'}`))
-      for (const log of extra.logs ?? []) {
-        const f = fence(log.tail)
-        lines.push('', `Log tail for ${log.check}:`, f, log.tail, f)
-      }
+      const lines = [`CI failed on #${n}: ${pr.url}`, `Head commit: ${ev.sha}`, ...failureLines(ev.checks, extra.logs ?? [])]
       return { subject: `CI failed on #${n}`, body: finish(lines) }
+    }
+    case 'escalate': {
+      const session = extra.session ?? 'the worker'
+      const lines = [
+        `CI is still failing on #${n} in ${session} after ${ev.attempts} fix attempts by its worker: ${pr.url}`,
+        `Head commit: ${ev.sha}`,
+        `This is escalation round ${ev.round} of ${ev.rounds}. If CI is still red ${ESCALATION_WAIT} after the last round, the panel asks Aamon.`,
+        ...failureLines(ev.checks, extra.logs ?? []),
+        '',
+        'Read the log tail and work out the root cause. Check memory.md for a fix pattern that worked before.',
+        `Then send the worker one specific fix with ./bin/tell ${session} <instructions>. Do not write the code yourself and do not ask Aamon.`,
+        'If the fix works, append a dated line to memory.md describing the pattern.'
+      ]
+      return { subject: `CI still failing on #${n} (escalation ${ev.round} of ${ev.rounds})`, body: lines.join('\n') }
     }
     case 'thread': {
       const c = ev.comment

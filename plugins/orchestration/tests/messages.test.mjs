@@ -194,3 +194,26 @@ test('messageFor does not mutate its inputs', () => {
   messageFor(ev, Object.freeze({ ...pr }), extra)
   assert.deepEqual(logs, [{ check: 'a', tail: 't' }])
 })
+
+test('escalate message goes to the orchestrator with the round, the log tail and a tell to the worker', () => {
+  const ev = {
+    kind: 'escalate',
+    pr: 42,
+    sha: 'abc123',
+    key: 'esc:acme/app#42:1',
+    round: 1,
+    rounds: 2,
+    attempts: 3,
+    checks: [{ name: 'lint', state: 'fail', jobId: '11', url: 'https://ci/lint' }]
+  }
+  const { subject, body } = messageFor(ev, pr, { logs: [{ check: 'lint', tail: 'error: unused import' }], session: 'billing-oa' })
+  assert.equal(subject, 'CI still failing on #42 (escalation 1 of 2)')
+  const lines = body.split('\n')
+  assert.equal(lines[0], `CI is still failing on #42 in billing-oa after 3 fix attempts by its worker: ${PR_URL}`)
+  assert.ok(body.includes('This is escalation round 1 of 2. If CI is still red 30 minutes after the last round, the panel asks Aamon.'))
+  assert.ok(body.includes('- lint: https://ci/lint'))
+  assert.ok(body.includes('Log tail for lint:\n```\nerror: unused import\n```'))
+  assert.ok(body.includes('./bin/tell billing-oa <instructions>'))
+  assert.ok(body.includes('memory.md'))
+  assert.ok(!body.includes('Fix it, push, and do not merge.'))
+})

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LEDGER, diffEvents, fixingFor, recordSent, recordSkipped, resetAttempts } from '../src/events.ts'
+import { EMPTY_LEDGER, ESCALATION_BACKOFF_MS, ESCALATION_ROUNDS, diffEvents, escalationStep, fixingFor, normalizeLedger, recordSent, recordSkipped, resetAttempts } from '../src/events.ts'
 
 const PR_KEY = 'acme/app#42'
 const ON = { now: 1000, maxAttempts: 3, ci: true, review: true }
@@ -69,8 +69,8 @@ function failing(sha, names = ['a']) {
   return pr({ headSha: sha, checks: names.map((n) => check(n, 'fail')) })
 }
 
-test('EMPTY_LEDGER has the four empty maps', () => {
-  assert.deepEqual(EMPTY_LEDGER, { sent: {}, ciSends: {}, firstFail: {}, last: {} })
+test('EMPTY_LEDGER has the five empty maps', () => {
+  assert.deepEqual(EMPTY_LEDGER, { sent: {}, ciSends: {}, firstFail: {}, last: {}, escalations: {} })
 })
 
 test('a second diff after recording every event emits nothing', () => {
@@ -366,7 +366,7 @@ test('no function mutates its inputs', () => {
   const green = frozenCopy(pr({ headSha: 's9' }))
   diffEvents(green, frozenLedger, ON)
   assert.deepEqual(frozenLedger, snapshotLedger)
-  assert.deepEqual(EMPTY_LEDGER, { sent: {}, ciSends: {}, firstFail: {}, last: {} })
+  assert.deepEqual(EMPTY_LEDGER, { sent: {}, ciSends: {}, firstFail: {}, last: {}, escalations: {} })
 })
 
 test('the [agent] marker matches in any case after leading whitespace', () => {
@@ -422,4 +422,105 @@ test('recordSkipped marks an event as handled without counting a fix attempt', (
   assert.deepEqual(skipped.ciSends, {})
   assert.deepEqual(skipped.last, {})
   assert.deepEqual(diffEvents(failing, skipped, ON).events, [])
+})
+
+const ESC = { ...ON, escalate: true }
+const HALF_HOUR = 30 * 60 * 1000
+
+function atLimit() {
+  let ledger = EMPTY_LEDGER
+  for (const sha of ['s1', 's2', 's3']) ledger = sendAll(failing(sha), ledger, 1000)
+  return ledger
+}
+
+test('escalation defaults to 2 rounds 30 minutes apart', () => {
+  assert.equal(ESCALATION_ROUNDS, 2)
+  assert.equal(ESCALATION_BACKOFF_MS, HALF_HOUR)
+})
+
+test('escalationStep sends, waits out the backoff, and ends at the card', () => {
+  const o = { rounds: 2, backoffMs: HALF_HOUR }
+  assert.equal(escalationStep(undefined, 0, o), 'send')
+  assert.equal(escalationStep({ rounds: 1, at: 0 }, HALF_HOUR - 1, o), 'wait')
+  assert.equal(escalationStep({ rounds: 1, at: 0 }, HALF_HOUR, o), 'send')
+  assert.equal(escalationStep({ rounds: 2, at: 0 }, HALF_HOUR - 1, o), 'wait')
+  assert.equal(escalationStep({ rounds: 2, at: 0 }, HALF_HOUR, o), 'card')
+  assert.equal(escalationStep(undefined, 0, { rounds: 0, backoffMs: HALF_HOUR }), 'card')
+})
+
+test('past the fix limit a failure escalates to the orchestrator for 2 rounds 30 minutes apart, then hits the limit', () => {
+  let ledger = atLimit()
+  const t0 = 10000
+  let res = diffEvents(failing('s4'), ledger, { ...ESC, now: t0 })
+  assert.equal(res.limitHit, false)
+  assert.equal(res.events.length, 1)
+  const first = res.events[0]
+  assert.deepEqual({ kind: first.kind, round: first.round, rounds: first.rounds, attempts: first.attempts, key: first.key, sha: first.sha }, { kind: 'escalate', round: 1, rounds: 2, attempts: 3, key: `esc:${PR_KEY}:1`, sha: 's4' })
+  assert.equal(first.checks[0].name, 'a')
+  ledger = recordSent(res.ledger, failing('s4'), first, t0)
+  assert.deepEqual(ledger.escalations[PR_KEY], { rounds: 1, at: t0 })
+  assert.equal(ledger.ciSends[PR_KEY], 3)
+
+  res = diffEvents(failing('s4'), ledger, { ...ESC, now: t0 + HALF_HOUR - 1 })
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, false)
+  res = diffEvents(failing('s5'), ledger, { ...ESC, now: t0 + HALF_HOUR - 1 })
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, false)
+
+  res = diffEvents(failing('s5'), ledger, { ...ESC, now: t0 + HALF_HOUR })
+  assert.equal(res.events.length, 1)
+  assert.equal(res.events[0].round, 2)
+  assert.equal(res.events[0].key, `esc:${PR_KEY}:2`)
+  ledger = recordSent(res.ledger, failing('s5'), res.events[0], t0 + HALF_HOUR)
+  assert.deepEqual(ledger.escalations[PR_KEY], { rounds: 2, at: t0 + HALF_HOUR })
+
+  res = diffEvents(failing('s5'), ledger, { ...ESC, now: t0 + 2 * HALF_HOUR - 1 })
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, false)
+  res = diffEvents(failing('s5'), ledger, { ...ESC, now: t0 + 2 * HALF_HOUR })
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, true)
+})
+
+test('the round count and backoff come from the options', () => {
+  const ledger = atLimit()
+  let res = diffEvents(failing('s4'), ledger, { ...ESC, rounds: 1, backoffMs: 5 })
+  assert.equal(res.events[0].rounds, 1)
+  const next = recordSent(res.ledger, failing('s4'), res.events[0], 1000)
+  assert.equal(diffEvents(failing('s4'), next, { ...ESC, now: 1004, rounds: 1, backoffMs: 5 }).limitHit, false)
+  assert.equal(diffEvents(failing('s4'), next, { ...ESC, now: 1005, rounds: 1, backoffMs: 5 }).limitHit, true)
+  res = diffEvents(failing('s4'), ledger, { ...ESC, rounds: 0 })
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, true)
+})
+
+test('without an orchestrator to escalate to the limit is hit straight away', () => {
+  const res = diffEvents(failing('s4'), atLimit(), ON)
+  assert.deepEqual(res.events, [])
+  assert.equal(res.limitHit, true)
+})
+
+test('escalation state resets on all green, on resetAttempts, and survives a skip', () => {
+  let ledger = atLimit()
+  const res = diffEvents(failing('s4'), ledger, ESC)
+  ledger = recordSent(res.ledger, failing('s4'), res.events[0], 1000)
+  assert.deepEqual(ledger.escalations, { [PR_KEY]: { rounds: 1, at: 1000 } })
+  const green = diffEvents(pr({ headSha: 's9', checks: [check('a', 'pass')] }), ledger, ESC)
+  assert.deepEqual(green.ledger.escalations, {})
+  assert.deepEqual(green.ledger.ciSends, {})
+  const reset = resetAttempts(ledger, failing('s4'))
+  assert.deepEqual(reset.escalations, {})
+  assert.equal(PR_KEY in reset.ciSends, false)
+  const skipped = recordSkipped(ledger, res.events[0], 2000)
+  assert.deepEqual(skipped.escalations, ledger.escalations)
+  const again = diffEvents(failing('s4'), reset, ESC)
+  assert.equal(again.events[0].kind, 'ci')
+})
+
+test('normalizeLedger keeps a ledger stored before escalations existed and drops bad entries', () => {
+  const old = { sent: { k: 1 }, ciSends: { [PR_KEY]: 3 }, firstFail: {}, last: {} }
+  assert.deepEqual(normalizeLedger(old), { ...old, escalations: {} })
+  const mixed = normalizeLedger({ ...old, escalations: { [PR_KEY]: { rounds: 1, at: 5 }, bad: { rounds: 'x' }, worse: null } })
+  assert.deepEqual(mixed.escalations, { [PR_KEY]: { rounds: 1, at: 5 } })
 })

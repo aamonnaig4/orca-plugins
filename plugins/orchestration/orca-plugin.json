@@ -45,6 +45,7 @@
       { "key": "suffix", "title": "Worker name suffix", "type": "string", "default": "-oa" },
       { "key": "intervalSec", "title": "GitHub check interval", "type": "number", "default": 60 },
       { "key": "attempts", "title": "Fix attempts before asking", "type": "number", "default": 3 },
+      { "key": "escalations", "title": "Orchestrator rounds after fix attempts", "type": "number", "default": 2 },
       { "key": "guard", "title": "Merge guard", "type": "boolean", "default": true },
       { "key": "onCi", "title": "When CI fails", "type": "string", "default": "fix" },
       { "key": "onConflict", "title": "When a PR has conflicts", "type": "string", "default": "fix" },

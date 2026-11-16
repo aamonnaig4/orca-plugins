@@ -173,7 +173,7 @@ async function setup(over = {}) {
     workers: [],
     repos: {},
     ghFail: {},
-    settings: { orchestratorAgent: 'claude', workerAgent: '', suffix: '-oa', intervalSec: 60, attempts: 3, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'ask', scope: 'all', ...over.settings },
+    settings: { orchestratorAgent: 'claude', workerAgent: '', suffix: '-oa', intervalSec: 60, attempts: 3, escalations: 0, guard: true, onCi: 'fix', onConflict: 'fix', onReview: 'fix', noAgent: 'ask', scope: 'all', ...over.settings },
     store: over.store ?? memoryStore(),
     fs: over.fs ?? memoryFs(),
     cliCalls: [],
@@ -1750,4 +1750,143 @@ test('watcher: a rate-limit refusal with budget left waits a minute, not five', 
   env.now += 61000
   await env.watcher.tick()
   assert.deepEqual(env.watcher.view().gh, { ok: true })
+})
+
+const HALF_HOUR = 30 * 60 * 1000
+
+function orchSends(env) {
+  return env.delivery.sends.filter((s) => s.key === 'orchestrator')
+}
+
+function cardsOf(env) {
+  return env.watcher.view().chat.filter((c) => c.kind === 'card').map((c) => c.card)
+}
+
+test('watcher: past the fix limit CI escalates to the orchestrator twice, 30 minutes apart, before the attempts card', async () => {
+  const env = await setup({ settings: { escalations: 2 } })
+  const key = addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  await reachLimit(env)
+  assert.equal(env.delivery.sends.filter((s) => s.key === key).length, 3)
+  assert.equal(orchSends(env).length, 1)
+  const first = orchSends(env)[0]
+  assert.equal(first.subject, 'CI still failing on #7 (escalation 1 of 2)')
+  assert.ok(first.body.includes('Error: lint failed'))
+  assert.ok(first.body.includes('./bin/tell feat <instructions>'))
+  assert.deepEqual(cardsOf(env), [])
+  assert.equal(env.watcher.view().needs, 0)
+
+  env.now += HALF_HOUR - 60000
+  await env.watcher.tick()
+  assert.equal(orchSends(env).length, 1)
+  assert.deepEqual(cardsOf(env), [])
+
+  env.now += 60000
+  await env.watcher.tick()
+  assert.equal(orchSends(env).length, 2)
+  assert.equal(orchSends(env)[1].subject, 'CI still failing on #7 (escalation 2 of 2)')
+  assert.deepEqual(cardsOf(env), [])
+
+  env.now += HALF_HOUR
+  await env.watcher.tick()
+  assert.equal(orchSends(env).length, 2)
+  const [card] = cardsOf(env)
+  assert.equal(card.kind, 'attempts')
+  assert.equal(card.detail, '3 fix attempts and 2 orchestrator rounds used')
+  assert.equal(env.delivery.sends.filter((s) => s.key === key).length, 3)
+
+  await env.watcher.retry(key)
+  await settle()
+  const ledger = env.store.peek('ledgers')['o/a#7']
+  assert.deepEqual(ledger.escalations, {})
+  assert.equal('o/a#7' in ledger.ciSends, true)
+  assert.equal(ledger.ciSends['o/a#7'], 1)
+})
+
+test('watcher: escalation state is persisted and a restart continues at the next round', async () => {
+  const env = await setup({ settings: { escalations: 2 } })
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  await reachLimit(env)
+  assert.equal(orchSends(env).length, 1)
+  await settle()
+  assert.deepEqual(env.store.peek('ledgers')['o/a#7'].escalations, { 'o/a#7': { rounds: 1, at: env.now } })
+  await env.rewire()
+  env.now += 60000
+  await env.watcher.tick()
+  assert.equal(orchSends(env).length, 0)
+  env.now += HALF_HOUR
+  await env.watcher.tick()
+  assert.equal(orchSends(env).length, 1)
+  assert.equal(orchSends(env)[0].subject, 'CI still failing on #7 (escalation 2 of 2)')
+})
+
+test('watcher: a ledger stored before escalations existed still loads with its fix count', async () => {
+  const store = memoryStore()
+  store.data.set('ledgers', JSON.stringify({ 'o/a#7': { sent: {}, ciSends: { 'o/a#7': 3 }, firstFail: {}, last: {} } }))
+  const env = await setup({ store, settings: { escalations: 2 } })
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  env.repos['o/a'] = [failing(7, 'feat', 's9')]
+  await env.watcher.tick()
+  assert.equal(env.delivery.sends.filter((s) => s.key !== 'orchestrator').length, 0)
+  assert.equal(orchSends(env).length, 1)
+})
+
+test('watcher: all green clears escalation state, and a closed PR drops it', async () => {
+  const env = await setup({ settings: { escalations: 2 } })
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  await reachLimit(env)
+  env.repos['o/a'] = [green(7, 'feat')]
+  env.now += 60000
+  await env.watcher.tick()
+  await settle()
+  assert.deepEqual(env.store.peek('ledgers')['o/a#7'].escalations, {})
+  env.repos['o/a'] = [failing(7, 'feat', 's8')]
+  env.now += 60000
+  await env.watcher.tick()
+  assert.equal(env.delivery.sends.at(-1).subject, 'CI failed on #7')
+  env.repos['o/a'] = []
+  env.now += 60000
+  await env.watcher.tick()
+  await settle()
+  assert.equal('o/a#7' in env.store.peek('ledgers'), false)
+})
+
+test('watcher: with no orchestrator the fix limit shows the attempts card straight away', async () => {
+  const env = await setup({ record: null, settings: { escalations: 2 } })
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  await reachLimit(env)
+  assert.equal(orchSends(env).length, 0)
+  assert.equal(cardsOf(env)[0].kind, 'attempts')
+  assert.equal(cardsOf(env)[0].detail, '3 fix attempts used')
+})
+
+test('watcher: sending a message writes the Best match for it into board.md before the orchestrator reads it', async () => {
+  const env = await setup()
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  addSession(env, 'other', { agent: agentInfo('waiting', 't2') })
+  env.repos['o/a'] = [green(7, 'feat')]
+  await env.watcher.tick()
+  const board = () => env.fs.files.get(HOME + '/board.md')
+  assert.ok(!board().includes('Best match'))
+  await env.watcher.addChat({ id: '', at: env.now, from: 'you', kind: 'text', text: 'fix the flaky test on #7' })
+  assert.ok(board().includes("Request: 'fix the flaky test on #7'\nBest match: feat (by PR)"), board())
+  await env.watcher.addChat({ id: '', at: env.now, from: 'you', kind: 'text', text: 'start a new pricing page' })
+  assert.ok(board().includes('Best match: none'), board())
+  await env.watcher.addChat({ id: '', at: env.now, from: 'you', kind: 'text', text: 'compare feat with other' })
+  assert.ok(board().includes('Best match: ambiguous (feat, other)'), board())
+  const writes = env.fs.writes.filter((p) => p === HOME + '/board.md').length
+  await env.watcher.addChat({ id: '', at: env.now, from: 'orchestrator', kind: 'text', text: '#7 done' })
+  await env.watcher.tick()
+  assert.equal(env.fs.writes.filter((p) => p === HOME + '/board.md').length, writes)
+})
+
+test('watcher: when the orchestrator cannot be reached the attempts card shows instead of escalating', async () => {
+  const env = await setup({ record: orchRecord({ agent: agentInfo('none', null) }), settings: { escalations: 2 } })
+  addSession(env, 'feat', { agent: agentInfo('waiting', 't1') })
+  await reachLimit(env)
+  assert.equal(env.watcher.view().needs, 1)
+  const [card] = cardsOf(env)
+  assert.equal(card.kind, 'attempts')
+  assert.equal(card.detail, '3 fix attempts used')
+  await settle()
+  assert.deepEqual(env.store.peek('ledgers')['o/a#7'].escalations, {})
 })
