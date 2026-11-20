@@ -43,11 +43,22 @@ Hogs and leaks need about 5 and 10 minutes of samples. Orca and its helpers, sys
 
 ## Settings
 
+- **Machine**: which computer to watch, "This computer" or a Linux machine from your SSH config (see Remote machines). Hidden on Windows.
 - **Graphs**: style (Smooth or Pixel), line style (Line + fill, Line or Bars, for Smooth graphs), color (Heat, or Theme to recolor everything, including the health strip, from your theme's primary color to its destructive color), gridlines on or off, history (1m, 5m, 15m, 1h, 6h or 24h), time labels (Relative, like "5m ago", or Clock, like "14:05"), record in background (keeps long history filling while the panel is closed), and refresh (a stepper from 100ms to 10s, also in the footer). Pixel draws every graph, bar and the health level blocks as braille dots. Fast refresh uses more CPU.
 - **Cleanup**: open cleanup terminal (switch to the agent's terminal when a cleanup starts), and the cleanup agent (Claude, Codex or Grok).
 - **Health**: the health strip on or off (it still shows at Strained or Critical), the memory alert on or off, and **Critical at**, the memory percent that puts the Critical warning in Orca's footer. It defaults to 95% and can be set from 70% to 99%. The memory alert only hides the pop-up inside the panel; the macOS notification still appears once memory is at that percent and pressure or swap says it is getting worse.
 - **Processes**: default sort (CPU, Memory or Name), and pulse on change, which flashes numbers that jump.
 - **General**: what the panel opens on (Last, All or Processes), text size (Small, Default or Large), and table rows (Compact, Default or Comfortable).
+
+## Remote machines
+
+Settings → **Machine** lists "This computer" and every concrete `Host` alias in `~/.ssh/config`. Pick one to see that machine's CPU, memory, network, disk, GPU and processes in the same panel, with the same health strip and Quit. Only one machine is shown at a time, and the graphs restart when you switch.
+
+- `ssh <alias>` must already work from the Orca computer with a key or agent (no password prompts). Aliases from `Include` files are not listed.
+- The remote machine must run Linux. Anything else shows "Only Linux machines are supported".
+- Quit works on processes your SSH user owns. The cleanup button (broom) is hidden while a remote machine is chosen. "What is this?" still works and tells your agent the process runs on that host.
+- The panel shows "Can't reach <alias>" with the SSH error when the machine cannot be reached, and keeps retrying.
+- It keeps one shared SSH connection open (a control socket under `/tmp/orca-am-*`) and runs a few short commands per refresh. The connection is closed when the plugin stops.
 
 ## Permissions
 
@@ -63,7 +74,7 @@ It runs as a trusted worker because it reads system counters and lists processes
 
 It also listens for one event, **agent status changes** (`agent.status.changed`), to know when the cleanup agent has started and when it is working, waiting or done.
 
-It makes no network connections and keeps its settings only in your copy of Orca.
+It makes no network connections, except SSH to a machine you pick under Settings → Machine. It keeps its settings only in your copy of Orca.
 
 ## What each system shows
 

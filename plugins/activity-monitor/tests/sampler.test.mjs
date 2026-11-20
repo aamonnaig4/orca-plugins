@@ -175,3 +175,28 @@ test('listProcs, inspect and guard reach the provider data for the cleanup', asy
   assert.deepEqual(guard.selfPids, [42])
   assert.equal(guard.protectedNames, provider.protectedNames)
 })
+
+test('an async cpus source feeds the core loads', async () => {
+  let n = 0
+  const sampler = createSampler({
+    provider: stubProvider(),
+    settle: 5,
+    cpus: async () => {
+      n += 1
+      return [{ user: n * 10, nice: 0, sys: 0, idle: n * 10, irq: 0 }, { user: 0, nice: 0, sys: 0, idle: n * 10, irq: 0 }]
+    }
+  })
+  const out = await sampler.read({})
+  assert.equal(out.sample.cores.length, 2)
+  assert.ok(out.sample.loads[0] > 40 && out.sample.loads[0] < 60)
+  assert.equal(out.sample.loads[1], 0)
+})
+
+test('quit guards only the configured self pids', async () => {
+  const quits = []
+  const provider = stubProvider({ identify: async () => ({ name: 'x', start: null }), quit: async (pid) => { quits.push(pid); return { ok: true } } })
+  const guarded = createSampler({ provider, selfPids: [321] })
+  assert.deepEqual(await guarded.quit(321, 'x', null), { ok: false, reason: 'Not allowed' })
+  assert.deepEqual(await guarded.quit(process.pid, 'x', null), { ok: true })
+  assert.deepEqual(quits, [process.pid])
+})

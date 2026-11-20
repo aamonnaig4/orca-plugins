@@ -16,9 +16,10 @@
   var QUIT_GRACE = 8000
   var NAMES = { all: 'All', cpu: 'CPU', mem: 'Memory', net: 'Network', disk: 'Disk', gpu: 'GPU', energy: 'Energy', procs: 'Processes' }
   var ICONS = { all: 'grid', cpu: 'cpu', mem: 'mem', net: 'net', disk: 'disk', gpu: 'gpu', energy: 'bolt', procs: 'proc' }
-  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'crit', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'resetprefs']
+  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'crit', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'sethost', 'resetprefs']
 
-  var DEFAULTS = { graph: 'smooth', line: 'fill', color: 'heat', grid: true, rate: 1000, hist: 60, clock: false, record: true, strip: true, alert: true, critAt: 95, sort: 'cpu', pulse: true, open: 'last', rows: 'default', text: 'default', focus: true, agent: 'claude' }
+  var DEFAULTS = { graph: 'smooth', line: 'fill', color: 'heat', grid: true, rate: 1000, hist: 60, clock: false, record: true, strip: true, alert: true, critAt: 95, sort: 'cpu', pulse: true, open: 'last', rows: 'default', text: 'default', focus: true, agent: 'claude', host: '' }
+  var HOST_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
   var CRIT_MIN = 70
   var CRIT_MAX = 99
   var HISTS = [60, 300, 900, 3600, 21600, 86400]
@@ -44,6 +45,7 @@
   if (HISTS.indexOf(prefs.hist) < 0) prefs.hist = DEFAULTS.hist
   if (LINES.indexOf(prefs.line) < 0) prefs.line = DEFAULTS.line
   if (AGENTS.indexOf(prefs.agent) < 0) prefs.agent = DEFAULTS.agent
+  if (typeof prefs.host !== 'string' || (prefs.host && !HOST_RE.test(prefs.host))) prefs.host = DEFAULTS.host
   ;['grid', 'clock', 'record', 'focus'].forEach(function (k) { if (typeof prefs[k] !== 'boolean') prefs[k] = DEFAULTS[k] })
   if (SORTS.indexOf(prefs.sort) < 0) prefs.sort = DEFAULTS.sort
   if (OPENS.indexOf(prefs.open) < 0) prefs.open = DEFAULTS.open
@@ -56,7 +58,7 @@
   var view = {
     paused: false, settings: false, sort: prefs.sort, query: '', ask: null, askMsg: '', stuck: false, gone: {}, error: '', busy: false,
     menu: null, colMenu: null, heroMenu: null, open: null, unselect: null, copied: null, holding: false, sel: null, drag: null, dragged: false, fitted: [],
-    glyph: 7.8, seen: {}, rows: 150, toastSeen: 0, cleanup: { kind: 'rest', n: null, count: 0 }, cleanupStarting: false, cleanupErr: '', cleanupErrAt: 0, hmsg: '', hmsgAt: 0, pointer: false, composing: false, hoverList: false, order: null, pending: false, dirty: true
+    glyph: 7.8, seen: {}, rows: 150, toastSeen: 0, cleanup: { kind: 'rest', n: null, count: 0 }, cleanupStarting: false, cleanupErr: '', cleanupErrAt: 0, hmsg: '', hmsgAt: 0, hosts: null, picking: false, pointer: false, composing: false, hoverList: false, order: null, pending: false, dirty: true
   }
   var palette = { primary: '#e6e6e6', secondary: '#a3a3a3', grid: '#1f1f1f', bg: '#000000' }
 
@@ -71,7 +73,7 @@
   function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch (e) {} }
   function syncPrefs() {
     if (!api || !api.plugin) return
-    api.plugin.request('prefs.sync', { record: prefs.record, focus: prefs.focus, agent: prefs.agent, critAt: prefs.critAt }).then(null, function () {})
+    api.plugin.request('prefs.sync', { record: prefs.record, focus: prefs.focus, agent: prefs.agent, critAt: prefs.critAt, host: prefs.host }).then(null, function () {})
   }
   function push(arr, v) { arr.push(v); if (arr.length > HISTORY) arr.shift() }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] }) }
@@ -135,6 +137,20 @@
     ;['tot', 'mem', 'down', 'up', 'gpu', 'dr', 'dw'].forEach(function (k) { data[k] = [] })
     data.core = []
     data.seq = 0
+  }
+
+  function clearData() {
+    reset()
+    data.boot = null
+    data.sample = null
+    data.health = null
+    data.procs = null
+    data.bat = []
+    data.norms = {}
+    view.gone = {}
+    view.sel = null
+    view.open = null
+    view.ask = null
   }
 
   var FIELDS = [['tot', 'total'], ['mem', 'mem'], ['down', 'down'], ['up', 'up'], ['gpu', 'gpu'], ['dr', 'read'], ['dw', 'write']]
@@ -235,6 +251,12 @@
     view.busy = true
     var spanSec = prefs.hist
     api.plugin.request('stats.read', { procs: wantsProcs(), details: wantsDetails(), energy: wantsEnergy(), since: data.seq, interval: prefs.rate, span: spanSec, boot: data.boot }, { timeoutMs: 15000 }).then(function (r) {
+      if (!r || (r.host || '') !== prefs.host) { syncPrefs(); return }
+      if (r.error) {
+        clearData()
+        view.error = r.error
+        return
+      }
       ingest(r, spanSec)
       data.at = performance.now()
       view.error = ''
@@ -610,6 +632,40 @@
     line: '<span class="lv"><svg viewBox="0 0 26 12"><path d="M0 9 L5 6 L9 8 L14 3 L19 6 L26 2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>',
     bars: '<span class="lv"><svg viewBox="0 0 26 12"><g fill="currentColor"><rect x="1" y="7" width="3" height="5"/><rect x="6" y="4" width="3" height="8"/><rect x="11" y="8" width="3" height="4"/><rect x="16" y="2" width="3" height="10"/><rect x="21" y="5" width="3" height="7"/></g></svg></span>'
   }
+  function hostSelect() {
+    var list = view.hosts.list.slice()
+    if (prefs.host && list.indexOf(prefs.host) < 0) list.unshift(prefs.host)
+    return '<select class="hsel" data-sethost aria-label="Machine">' +
+      '<option value=""' + (prefs.host ? '' : ' selected') + '>This computer</option>' +
+      list.map(function (h) { return '<option value="' + esc(h) + '"' + (h === prefs.host ? ' selected' : '') + '>' + esc(h) + '</option>' }).join('') + '</select>'
+  }
+
+  function hostsRead() {
+    if (!api || !api.plugin) return
+    api.plugin.request('hosts.list', {}, { timeoutMs: 15000 }).then(function (r) {
+      if (!r || !Array.isArray(r.hosts)) return
+      view.hosts = { supported: r.supported !== false, list: r.hosts.filter(function (h) { return typeof h === 'string' }) }
+      render()
+    }, function () {})
+  }
+
+  function setHost(h) {
+    if (h === prefs.host || (h && !HOST_RE.test(h))) return
+    prefs.host = h
+    savePrefs()
+    syncPrefs()
+    clearData()
+    view.error = ''
+    render()
+    poll()
+  }
+
+  function hostChip() {
+    if (!prefs.host) return ''
+    var tip = esc('Showing ' + prefs.host + ' over SSH')
+    return '<a class="hostchip" data-gear title="' + tip + '" aria-label="' + tip + '" tabindex="0">' + esc(prefs.host) + '</a>'
+  }
+
   function settingsView() {
     function choice(attr, current, opts) {
       return '<div class="seg">' + opts.map(function (o) {
@@ -624,7 +680,10 @@
     function row(label, ctl, sub) { return '<div class="sr"><span>' + label + (sub ? '<em>' + sub + '</em>' : '') + '</span>' + ctl + '</div>' }
     function grp(title, rows) { return '<div class="sg"><div class="sgh">' + title + '</div><div class="srows">' + rows.join('') + '</div></div>' }
     function toggle(attr, on, label) { return '<a class="tg' + (on ? ' on' : '') + '" data-' + attr + '="t" role="switch" aria-checked="' + on + '" aria-label="' + label + '" tabindex="0"></a>' }
-    return '<div class="setv">' +
+    var machine = view.hosts && view.hosts.supported
+      ? grp('Machine', [row('Monitor', hostSelect(), 'Linux machines in ~/.ssh/config, key login')])
+      : ''
+    return '<div class="setv">' + machine +
       grp('Graphs', [
         row('Graph style', choice('setgraph', prefs.graph, [['smooth', 'Smooth', smooth], ['braille', 'Pixel', pixel]])),
         row('Line style', choice('setline', prefs.line, [['fill', '', LINE_ICONS.fill, 'Line + fill'], ['line', '', LINE_ICONS.line, 'Line'], ['bars', '', LINE_ICONS.bars, 'Bars']]), 'Smooth graphs only'),
@@ -985,7 +1044,7 @@
   }
 
   function render() {
-    if (view.pointer || view.composing || view.holding) { view.pending = true; return }
+    if (view.pointer || view.composing || view.holding || view.picking) { view.pending = true; return }
     view.pending = false
     var layout = { page: false }
     var top
@@ -996,7 +1055,7 @@
       body = settingsView()
     } else {
       var lv = data.health && data.sample ? data.health.level : 'ok'
-      top = (healthToast() || cleanupToast()) + '<div class="top lv-' + lv + '">' + healthStrip() + stepper() + cleanupButton() + '<a class="ib" data-pause title="' + (view.paused ? 'Resume' : 'Pause') + '" tabindex="0">' + icon(view.paused ? 'play' : 'pause') +
+      top = (healthToast() || cleanupToast()) + '<div class="top lv-' + lv + '">' + healthStrip() + hostChip() + stepper() + (prefs.host ? '' : cleanupButton()) + '<a class="ib" data-pause title="' + (view.paused ? 'Resume' : 'Pause') + '" tabindex="0">' + icon(view.paused ? 'play' : 'pause') +
         '</a><a class="ib" data-gear title="Settings" tabindex="0">' + icon('gear') + '</a></div>'
       if (!data.sample) {
         body = '<div class="note">' + esc(view.error || (api ? 'Reading your system…' : 'Open this panel in Orca.')) + '</div>'
@@ -1333,7 +1392,7 @@
     view.heroMenu = null
     if (d.hero) { prefs.hero = d.hero; savePrefs() }
     if ('resetcols' in d) { prefs.cols = Cols.DEFAULT.slice(); savePrefs() }
-    if ('gear' in d) { popClose(); view.settings = !view.settings }
+    if ('gear' in d) { popClose(); view.settings = !view.settings; if (view.settings) hostsRead() }
     else if (d.setgraph) { prefs.graph = d.setgraph; savePrefs() }
     else if (d.setline) { prefs.line = d.setline; savePrefs() }
     else if (d.setcolor) { prefs.color = d.setcolor; savePrefs() }
@@ -1350,7 +1409,7 @@
     else if (d.setopen) { prefs.open = d.setopen; savePrefs() }
     else if (d.setrows) { prefs.rows = d.setrows; savePrefs() }
     else if (d.settext) { prefs.text = d.settext; savePrefs() }
-    else if ('resetprefs' in d) { Object.assign(prefs, DEFAULTS); view.sort = prefs.sort; view.order = null; data.norms = {}; savePrefs(); setRate(prefs.rate); syncPrefs() }
+    else if ('resetprefs' in d) { var hadHost = prefs.host; Object.assign(prefs, DEFAULTS); if (hadHost) { clearData(); view.error = '' }; view.sort = prefs.sort; view.order = null; data.norms = {}; savePrefs(); setRate(prefs.rate); syncPrefs() }
     else if (d.tab) {
       popClose()
       var before = wantsProcs()
@@ -1559,6 +1618,17 @@
     view.query = ev.target.value
     view.rows = PAGE_ROWS
     if (!ev.isComposing) render()
+  })
+  root.addEventListener('focusin', function (ev) { if (ev.target.matches('select[data-sethost]')) view.picking = true })
+  root.addEventListener('focusout', function (ev) {
+    if (!ev.target.matches('select[data-sethost]')) return
+    view.picking = false
+    if (view.pending) setTimeout(render, 0)
+  })
+  root.addEventListener('change', function (ev) {
+    if (!ev.target.matches('select[data-sethost]')) return
+    view.picking = false
+    setHost(ev.target.value)
   })
   root.addEventListener('compositionstart', function () { view.composing = true })
   root.addEventListener('compositionend', function (ev) {

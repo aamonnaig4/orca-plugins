@@ -75,3 +75,12 @@ test('every process-derived field is capped', () => {
   const { inside } = block(p)
   assert.match(inside, new RegExp('^name n{120}; PID 1; path /p{299}; user u{40}; started s{40}$'))
 })
+
+test('a remote host is named in the prompt and an invalid one is ignored', () => {
+  const remote = buildPrompt({ pid: 7, name: 'node', host: 'devbox', platform: 'linux' })
+  assert.match(remote, /remote Linux machine/)
+  assert.match(remote, /ssh devbox/)
+  const bad = buildPrompt({ pid: 7, name: 'node', host: '-oProxyCommand=x', platform: 'linux' })
+  assert.doesNotMatch(bad, /remote/)
+  assert.match(bad, /on my Linux/)
+})

@@ -1,10 +1,14 @@
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import type { OrcaWorkerApi } from 'orca/worker'
-import { createSampler } from './sampler.ts'
-import { clampCritAt, CRIT_AT, type Level } from './health.ts'
+import { createSampler, type Sampler } from './sampler.ts'
+import { clampCritAt, CRIT_AT, type Alert, type Level } from './health.ts'
 import { buildPrompt, pickAgent } from './explain.ts'
 import type { AgentRow, ExplainInput } from './explain.ts'
-import { nodeDeps } from './deps.ts'
+import { nodeDeps, type Deps } from './deps.ts'
+import { createRemoteSampler, HOST_RE, sshHosts } from './remote.ts'
 import { buildCleanupPrompt, cwdPids, findSuspects, inspectPids, parseProposed, pillState } from './cleanup.ts'
 import type { AgentState, CleanupSuspect, PillState } from './cleanup.ts'
 import { createTracker } from './tracker.ts'
@@ -29,16 +33,25 @@ const APP_CLI = '/Applications/Orca.app/Contents/Resources/bin/orca'
 const AGENTS = ['claude', 'codex', 'grok'] as const
 
 type CleanupAgent = (typeof AGENTS)[number]
-type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent; critAt: number }
+type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent; critAt: number; host: string }
+type Machine = { host: string; deps: Deps; close(): Promise<void> }
 type Session = { terminalId: string; suspects: CleanupSuspect[]; startedAt: number; sentAt: number; agent: AgentState | null; gone: number; quitAt: number | null }
 type View = { state: PillState; count: number }
 type StartResult = ({ ok: true } & View) | { ok: false; reason: string }
 type Workspace = { id: string; name: string; path: string; branch: string | null; hostId: string | null }
 
-const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude', critAt: CRIT_AT }
+const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude', critAt: CRIT_AT, host: '' }
 const REST: View = { state: { kind: 'rest' }, count: 0 }
 
-export const seams = { run: nodeDeps.run, sampler: () => createSampler(), startWaitMs: START_WAIT_MS }
+export const seams = {
+  run: nodeDeps.run,
+  sampler: () => createSampler(),
+  remoteSampler: (host: string): { sampler: Sampler; deps: Deps & { close(): Promise<void> } } => createRemoteSampler(host),
+  startWaitMs: START_WAIT_MS
+}
+
+const LOCAL: Machine = { host: '', deps: nodeDeps, close: async () => undefined }
+let closeMachine: () => Promise<void> = async () => undefined
 
 let timer: ReturnType<typeof setInterval> | null = null
 let trackTimer: ReturnType<typeof setInterval> | null = null
@@ -51,7 +64,8 @@ function readPrefs(raw: unknown, base: Prefs): Prefs {
     record: typeof r.record === 'boolean' ? r.record : base.record,
     focus: typeof r.focus === 'boolean' ? r.focus : base.focus,
     agent,
-    critAt: clampCritAt(r.critAt, base.critAt)
+    critAt: clampCritAt(r.critAt, base.critAt),
+    host: typeof r.host === 'string' && (r.host === '' || (HOST_RE.test(r.host) && process.platform !== 'win32')) ? r.host : base.host
   }
 }
 
@@ -89,7 +103,9 @@ async function terminalAlive(terminalId: string): Promise<boolean | null> {
 }
 
 export default function activate(orca: OrcaWorkerApi): void {
-  const sampler = seams.sampler()
+  let sampler: Sampler = seams.sampler()
+  let machine: Machine = LOCAL
+  closeMachine = () => machine.close()
   const host = (orca as unknown as { host?: { call?: HostCall } }).host
   const log = (orca as unknown as { log?: (...args: unknown[]) => void }).log
   const call: HostCall = (method, params) =>
@@ -103,15 +119,37 @@ export default function activate(orca: OrcaWorkerApi): void {
     const next = BADGE[level]
     if (shown !== null && BADGE[shown].visible === next.visible && (!next.visible || shown === level)) return
     shown = level
-    void call('statusBar.update', { id: 'health', ...next, icon: 'warning', tooltip })
+    void call('statusBar.update', { id: 'health', ...next, icon: 'warning', tooltip: machine.host && tooltip ? machine.host + ': ' + tooltip : tooltip })
   }
 
-  sampler.onAlert((alert) => {
-    if (alert.kind === 'notify') void call('notifications.show', { title: alert.title, body: alert.body })
-  })
+  const sink = (alert: Alert) => {
+    if (alert.kind === 'notify') void call('notifications.show', { title: machine.host ? machine.host + ': ' + alert.title : alert.title, body: alert.body })
+  }
+  sampler.onAlert(sink)
 
-  const tracker = createTracker()
+  let tracker = createTracker()
   let prefs: Prefs = { ...DEFAULT_PREFS }
+
+  function useHost(host: string): void {
+    if (host === machine.host) return
+    const old = machine
+    if (host) {
+      const remote = seams.remoteSampler(host)
+      sampler = remote.sampler
+      machine = { host, deps: remote.deps, close: () => remote.deps.close() }
+    } else {
+      sampler = seams.sampler()
+      machine = LOCAL
+    }
+    old.close().catch(() => undefined)
+    closeMachine = () => machine.close()
+    sampler.setRecording(prefs.record)
+    sampler.setCritAt(prefs.critAt)
+    sampler.onAlert(sink)
+    tracker = createTracker()
+    shown = null
+    badge('ok', '')
+  }
   let synced = false
   let lastPanelRead = -Infinity
   let tracking = false
@@ -123,6 +161,7 @@ export default function activate(orca: OrcaWorkerApi): void {
   orca.storage.get('prefs').then((stored) => {
     if (synced) return
     prefs = readPrefs(stored, DEFAULT_PREFS)
+    useHost(prefs.host)
     sampler.setRecording(prefs.record)
     sampler.setCritAt(prefs.critAt)
   }, () => undefined)
@@ -264,6 +303,7 @@ export default function activate(orca: OrcaWorkerApi): void {
   }
 
   orca.panels.handle('cleanup.start', () => {
+    if (machine.host) return { ok: false, reason: 'Cleanup works on this computer only' }
     if (!starting) starting = start().finally(() => {
       starting = null
     })
@@ -287,6 +327,7 @@ export default function activate(orca: OrcaWorkerApi): void {
   orca.panels.handle('prefs.sync', async (input) => {
     prefs = readPrefs(input, prefs)
     synced = true
+    useHost(prefs.host)
     sampler.setRecording(prefs.record)
     sampler.setCritAt(prefs.critAt)
     try {
@@ -299,9 +340,21 @@ export default function activate(orca: OrcaWorkerApi): void {
 
   orca.panels.handle('stats.read', async (input) => {
     lastPanelRead = Date.now()
-    const out = await sampler.read(input ?? {})
-    badge(out.health.level, out.health.cause)
-    return out
+    const current = machine
+    let out: Awaited<ReturnType<Sampler['read']>>
+    try {
+      out = await sampler.read(input ?? {})
+    } catch (error: unknown) {
+      if (!current.host) throw error
+      return { error: "Can't reach " + current.host + ': ' + (error instanceof Error ? error.message : String(error)), host: current.host }
+    }
+    if (current === machine) badge(out.health.level, out.health.cause)
+    return { ...out, host: current.host || null }
+  })
+
+  orca.panels.handle('hosts.list', async () => {
+    const text = await readFile(path.join(os.homedir(), '.ssh', 'config'), 'utf8').catch(() => '')
+    return { supported: process.platform !== 'win32', hosts: sshHosts(text), current: prefs.host }
   })
   orca.panels.handle('health.suspects', async () => sampler.suspects())
   orca.panels.handle('process.quit', async (input) =>
@@ -310,14 +363,14 @@ export default function activate(orca: OrcaWorkerApi): void {
 
   async function processPath(pid: number): Promise<string | null> {
     if (process.platform === 'win32' || !Number.isInteger(pid) || pid <= 0) return null
-    const out = await nodeDeps.run('ps', ['-p', String(pid), '-o', 'comm='])
+    const out = await machine.deps.run('ps', ['-p', String(pid), '-o', 'comm='])
     return out ? out.trim() || null : null
   }
 
   orca.panels.handle('process.explain', async (input) => {
     const raw = (input ?? {}) as ExplainInput
     if (!host || !host.call) return { ok: false, reason: 'This Orca cannot send to agents' }
-    const prompt = buildPrompt({ ...raw, platform: process.platform }, await processPath(Number(raw.pid)))
+    const prompt = buildPrompt({ ...raw, platform: machine.host ? 'linux' : process.platform, host: machine.host || undefined }, await processPath(Number(raw.pid)))
     if (!prompt) return { ok: false, reason: 'That process is gone' }
     try {
       const listed = (await host.call('agents.list', {})) as { agents?: AgentRow[] } | null
@@ -338,7 +391,7 @@ export default function activate(orca: OrcaWorkerApi): void {
 
   if (trackTimer) clearInterval(trackTimer)
   trackTimer = setInterval(() => {
-    if (tracking || !(prefs.record || Date.now() - lastPanelRead < PANEL_RECENT_MS)) return
+    if (tracking || machine.host || !(prefs.record || Date.now() - lastPanelRead < PANEL_RECENT_MS)) return
     tracking = true
     sampler.listProcs().then((list) => {
       if (list) tracker.add(list)
@@ -357,10 +410,12 @@ export default function activate(orca: OrcaWorkerApi): void {
   }, PULSE_MS)
 }
 
-export function deactivate(): void {
+export async function deactivate(): Promise<void> {
   if (timer) clearInterval(timer)
   timer = null
   if (trackTimer) clearInterval(trackTimer)
   trackTimer = null
   for (const done of [...waiting]) done(false)
+  await closeMachine().catch(() => undefined)
+  closeMachine = async () => undefined
 }

@@ -319,9 +319,9 @@ test('prefs.sync stores the prefs and the next launch uses the chosen agent with
   const worker = await mountWorker(main, { host })
   const synced = await worker.request('prefs.sync', { record: false, focus: false, agent: 'codex' })
   assert.equal(synced.ok, true)
-  assert.deepEqual(host.data().storage.prefs, { record: false, focus: false, agent: 'codex', critAt: 95 })
+  assert.deepEqual(host.data().storage.prefs, { record: false, focus: false, agent: 'codex', critAt: 95, host: '' })
   await worker.request('prefs.sync', { record: false, focus: false, agent: 'auto' })
-  assert.deepEqual(host.data().storage.prefs, { record: false, focus: false, agent: 'codex', critAt: 95 })
+  assert.deepEqual(host.data().storage.prefs, { record: false, focus: false, agent: 'codex', critAt: 95, host: '' })
   await started(worker)
   assert.equal(worker.host.callsOf('agent.launch')[0].agent, 'codex')
   assert.deepEqual(runs, [])
@@ -358,5 +358,95 @@ test('the worker loads stored prefs when it starts', async () => {
   const worker = await mountWorker(main, { host })
   await started(worker)
   assert.equal(worker.host.callsOf('agent.launch')[0].agent, 'grok')
+  await worker.deactivate()
+})
+
+function fakeRemote() {
+  const closed = []
+  const seen = []
+  const remoteProvider = (fail) => ({
+    diskPath: '.',
+    diskName: 'Home',
+    countIrq: true,
+    procEvery: 0,
+    protectedNames: /^(systemd)$/,
+    info: async () => ({ performance: [], efficiency: [], model: '' }),
+    note: async () => null,
+    read: async () => {
+      if (fail) throw new Error('Permission denied (publickey).')
+      return { memory: { total: 200, used: 50, app: 50, wired: 0, compressed: 0, cached: 0 }, swap: null, pressure: null, net: null, disk: null, gpu: null }
+    },
+    procs: async () => [],
+    identify: async () => null,
+    quit: async () => ({ ok: true }),
+    detailsEvery: 0,
+    details: async () => null,
+    cwds: async () => new Map(),
+    args: async () => new Map()
+  })
+  let fail = false
+  main.seams.remoteSampler = (host) => {
+    seen.push(host)
+    const deps = { run: async (c, a) => '/remote/bin/' + c, read: async () => '', list: async () => [], readlink: async () => null, close: async () => { closed.push(host) } }
+    return { sampler: createSampler({ provider: remoteProvider(fail), settle: 5, cpus: async () => [{ user: 1, nice: 0, sys: 0, idle: 1, irq: 0 }], selfPids: [] }), deps }
+  }
+  return { closed, seen, setFail: (v) => { fail = v } }
+}
+
+test('choosing a host swaps the sampler, tags stats.read with it and closes it on switch back', async () => {
+  fakeCli()
+  const remote = fakeRemote()
+  const worker = await mountWorker(main, { host: cleanupHost() })
+  const local = await worker.request('stats.read', {})
+  assert.equal(local.host, null)
+  assert.equal(local.sample.memory.total, 100)
+  await worker.request('prefs.sync', { host: 'devbox' })
+  assert.deepEqual(remote.seen, ['devbox'])
+  const out = await worker.request('stats.read', {})
+  assert.equal(out.host, 'devbox')
+  assert.equal(out.sample.memory.total, 200)
+  assert.notEqual(out.boot, local.boot)
+  await worker.request('prefs.sync', { host: '' })
+  assert.deepEqual(remote.closed, ['devbox'])
+  assert.equal((await worker.request('stats.read', {})).host, null)
+  await worker.request('prefs.sync', { host: '-oProxyCommand=x' })
+  assert.deepEqual(remote.seen, ['devbox'])
+  await worker.deactivate()
+})
+
+test('an unreachable host answers with an error and never local numbers', async () => {
+  fakeCli()
+  const remote = fakeRemote()
+  remote.setFail(true)
+  const worker = await mountWorker(main, { host: cleanupHost() })
+  await worker.request('prefs.sync', { host: 'devbox' })
+  assert.deepEqual(await worker.request('stats.read', {}), { error: "Can't reach devbox: Permission denied (publickey).", host: 'devbox' })
+  await worker.deactivate()
+})
+
+test('cleanup.start refuses while a remote machine is chosen and explain names the host', async () => {
+  fakeCli()
+  fakeRemote()
+  const worker = await mountWorker(main, { host: cleanupHost({ 'agents.list': { agents: [{ terminalId: 'term_1', title: 'Claude', agent: 'claude', state: 'waiting', stateStartedAt: 1 }] } }) })
+  await worker.request('prefs.sync', { host: 'devbox' })
+  assert.deepEqual(await worker.request('cleanup.start'), { ok: false, reason: 'Cleanup works on this computer only' })
+  assert.equal(worker.host.callsOf('agent.launch').length, 0)
+  const explained = await worker.request('process.explain', { pid: 42, name: 'node' })
+  assert.equal(explained.ok, true)
+  const sent = worker.host.callsOf('terminal.sendText').at(-1).text
+  assert.match(sent, /ssh devbox/)
+  assert.match(sent, /path \/remote\/bin\/ps/)
+  await worker.deactivate()
+})
+
+test('hosts.list returns the current host', async () => {
+  fakeCli()
+  fakeRemote()
+  const worker = await mountWorker(main, { host: cleanupHost() })
+  await worker.request('prefs.sync', { host: 'devbox' })
+  const listed = await worker.request('hosts.list')
+  assert.equal(listed.current, 'devbox')
+  assert.equal(typeof listed.supported, 'boolean')
+  assert.ok(Array.isArray(listed.hosts))
   await worker.deactivate()
 })

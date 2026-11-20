@@ -69,7 +69,7 @@ type Space = { blocks: number; bsize: number; bavail: number; bfree: number }
 
 export type SamplerOptions = {
   provider?: Provider
-  cpus?: () => CpuTimes[]
+  cpus?: () => CpuTimes[] | Promise<CpuTimes[]>
   space?: (path: string) => Promise<Space | null>
   settle?: number
   clock?: () => number
@@ -96,6 +96,8 @@ function cpuSplit(before: CpuTimes[], after: CpuTimes[]): Sample['split'] {
   const total = user + system + idle
   return total > 0 ? { user: (user / total) * 100, system: (system / total) * 100, idle: (idle / total) * 100 } : null
 }
+
+export type Sampler = ReturnType<typeof createSampler>
 
 export function providerFor(platform: string): Provider {
   if (platform === 'darwin') return createMac(nodeDeps)
@@ -139,15 +141,15 @@ export function createSampler(options: SamplerOptions = {}) {
   async function take(): Promise<Sample> {
     if (!cores) {
       const [info, n] = await Promise.all([provider.info(), provider.note()])
-      cores = coreLayout(cpus().length, info.performance, info.efficiency)
+      cores = coreLayout((await cpus()).length, info.performance, info.efficiency)
       note = n
     }
     if (!previous) {
-      previous = { at: Date.now(), cpus: cpus(), net: null, disk: null }
+      previous = { at: Date.now(), cpus: await cpus(), net: null, disk: null }
       await wait(settle)
     }
     const at = Date.now()
-    const now = cpus()
+    const now = await cpus()
     const [raw, fs] = await Promise.all([provider.read(), space(provider.diskPath)])
     const seconds = (at - previous.at) / 1000
     const all = coreLoads(previous.cpus, now, provider.countIrq)
@@ -327,7 +329,7 @@ export function createSampler(options: SamplerOptions = {}) {
   }
 
   async function quit(pid: number, name: string, start: string | null, force = false): Promise<QuitResult> {
-    if (!Number.isInteger(pid) || pid <= 4 || pid === process.pid || pid === process.ppid) return { ok: false, reason: 'Not allowed' }
+    if (!Number.isInteger(pid) || pid <= 4 || selfPids.includes(pid)) return { ok: false, reason: 'Not allowed' }
     if (/^orca/i.test(name)) return { ok: false, reason: 'Quit Orca from its own menu' }
     if (provider.protectedNames.test(name)) return { ok: false, reason: 'Protected system process' }
     const current = await provider.identify(pid)
