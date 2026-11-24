@@ -318,3 +318,33 @@ body {
 .top.slim .cu .t, .top.slim .cu .wide { display: none; }
 .top.slim .cu .slim, .top.slim .cu .dot { display: block; }
 .top.slim .stp b { min-width: 40px; }
+
+/* Sources: this computer and the servers Orca is connected to */
+.srcbar { flex: none; display: flex; gap: 2px; padding: 6px 8px 0; overflow-x: auto; scrollbar-width: none; }
+.srcbar::-webkit-scrollbar { display: none; }
+.srcbar a { flex: none; display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; color: var(--muted); font-size: calc(11px * var(--ts, 1)); white-space: nowrap; max-width: 160px; }
+.srcbar a span { overflow: hidden; text-overflow: ellipsis; }
+.srcbar a:hover, .srcbar a.on { color: var(--fg); background: var(--accent); }
+.srcbar .cmpb { margin-left: auto; }
+.srcbar .cmpb .ico { width: 12px; height: 12px; }
+.sd { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .6; }
+.sd.connected { background: #4ade80; opacity: 1; }
+.sd.connecting { background: #fbbf24; opacity: 1; }
+.sd.error { background: var(--danger); opacity: 1; }
+.remote [data-quit], .remote [data-quitsel], .remote .hb, .remote [data-explain], .remote .menu hr, .remote [data-hquit] { display: none !important; }
+
+/* Compare: one card per source */
+.cmpv { display: flex; flex-direction: column; gap: 8px; }
+.cmp { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; color: inherit; min-width: 0; }
+.cmp:hover { border-color: color-mix(in srgb, var(--fg) 22%, var(--bg)); }
+.cmp .ch { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin-bottom: 2px; }
+.cmp .ch b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp .ch .mut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cmp .ch .cw { margin-left: auto; flex: none; font-weight: 600; }
+.cmp .cr { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
+.cmp .cr .ck { flex: none; width: 56px; color: var(--muted); }
+.cmp .cr b { flex: none; min-width: 34px; }
+.cmp .cr .mut { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.cmp .cg { height: 26px; }
+.cmp .cg canvas, .cmp .cg .brfill { display: block; width: 100%; height: 100%; }
+.cmp .tnote { padding: 4px 0; }

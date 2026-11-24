@@ -8,6 +8,8 @@ import { nodeDeps } from './deps.ts'
 import { buildCleanupPrompt, cwdPids, findSuspects, inspectPids, parseProposed, pillState } from './cleanup.ts'
 import type { AgentState, CleanupSuspect, PillState } from './cleanup.ts'
 import { createTracker } from './tracker.ts'
+import { createLink, createRemote, type Link } from './remote.ts'
+import { discover, LOCAL, type Source, type Sources } from './sources.ts'
 
 type HostCall = (method: string, params: Record<string, unknown>) => Promise<unknown>
 
@@ -27,6 +29,8 @@ const READ_LINES = 200
 const STATUS_KEEP = 64
 const APP_CLI = '/Applications/Orca.app/Contents/Resources/bin/orca'
 const AGENTS = ['claude', 'codex', 'grok'] as const
+const SOURCES_TTL_MS = 15000
+const LEVEL_RANK: Record<Level, number> = { ok: 0, warn: 1, risk: 2, crit: 3 }
 
 type CleanupAgent = (typeof AGENTS)[number]
 type Prefs = { record: boolean; focus: boolean; agent: CleanupAgent; critAt: number }
@@ -38,7 +42,26 @@ type Workspace = { id: string; name: string; path: string; branch: string | null
 const DEFAULT_PREFS: Prefs = { record: true, focus: true, agent: 'claude', critAt: CRIT_AT }
 const REST: View = { state: { kind: 'rest' }, count: 0 }
 
-export const seams = { run: nodeDeps.run, sampler: () => createSampler(), startWaitMs: START_WAIT_MS }
+export const seams = {
+  run: nodeDeps.run,
+  sampler: () => createSampler(),
+  startWaitMs: START_WAIT_MS,
+  pulseMs: PULSE_MS,
+  discover: (cli: (args: string[]) => Promise<unknown>) => discover(cli),
+  remote: (link: Link) => {
+    const r = createRemote(link)
+    return createSampler({ provider: r.provider, cpus: r.cpus, space: r.space, selfPids: [] })
+  },
+  link: createLink
+}
+
+type Sampler = ReturnType<typeof createSampler>
+type Remote = { source: Source; link: Link; sampler: Sampler }
+const remotes = new Map<string, Remote>()
+
+function readOnly<T extends { culprit?: { quittable: boolean } | null }>(h: T): T {
+  return h && h.culprit ? { ...h, culprit: { ...h.culprit, quittable: false } } : h
+}
 
 let timer: ReturnType<typeof setInterval> | null = null
 let trackTimer: ReturnType<typeof setInterval> | null = null
@@ -98,10 +121,27 @@ export default function activate(orca: OrcaWorkerApi): void {
       return null
     })
   let shown: Level | null = null
+  let shownTip = ''
+
+  function worst(): { level: Level; tooltip: string } {
+    const h = sampler.health()
+    let best: { level: Level; tooltip: string } = { level: h.level, tooltip: h.cause }
+    for (const r of remotes.values()) {
+      const rh = r.sampler.health()
+      if (LEVEL_RANK[rh.level] > LEVEL_RANK[best.level]) best = { level: rh.level, tooltip: r.source.label + ': ' + rh.cause }
+    }
+    return best
+  }
+
+  function refreshBadge(): void {
+    const w = worst()
+    badge(w.level, w.tooltip)
+  }
 
   function badge(level: Level, tooltip: string): void {
     const next = BADGE[level]
-    if (shown !== null && BADGE[shown].visible === next.visible && (!next.visible || shown === level)) return
+    if (shown !== null && BADGE[shown].visible === next.visible && (!next.visible || (shown === level && shownTip === tooltip))) return
+    shownTip = tooltip
     shown = level
     void call('statusBar.update', { id: 'health', ...next, icon: 'warning', tooltip })
   }
@@ -125,6 +165,10 @@ export default function activate(orca: OrcaWorkerApi): void {
     prefs = readPrefs(stored, DEFAULT_PREFS)
     sampler.setRecording(prefs.record)
     sampler.setCritAt(prefs.critAt)
+    for (const r of remotes.values()) {
+      r.sampler.setRecording(prefs.record)
+      r.sampler.setCritAt(prefs.critAt)
+    }
   }, () => undefined)
 
   orca.events.on('agent.status.changed', (payload) => {
@@ -284,11 +328,79 @@ export default function activate(orca: OrcaWorkerApi): void {
     return { ok: true, ...current }
   })
 
+  let sources: Sources | null = null
+  let sourcesAt = -Infinity
+  let discovering: Promise<Sources | null> | null = null
+
+  async function currentSources(force = false): Promise<Sources | null> {
+    if (!force && sources && Date.now() - sourcesAt < SOURCES_TTL_MS) return sources
+    const stale = !force ? sources : null
+    if (!discovering) {
+      discovering = seams.discover(cliJson).then((found) => {
+        if (found) {
+          sources = found
+          sourcesAt = Date.now()
+          for (const [id, r] of remotes) {
+            if (!found.targets.has(id)) {
+              r.link.dispose()
+              remotes.delete(id)
+            }
+          }
+        }
+        return sources
+      }, () => sources).finally(() => {
+        discovering = null
+      })
+    }
+    return stale ?? discovering
+  }
+
+  async function remoteFor(id: string): Promise<Remote | null> {
+    const have = remotes.get(id)
+    if (have) return have
+    const found = await currentSources(!sources?.targets.has(id))
+    const target = found?.targets.get(id)
+    const source = found?.sources.find((x) => x.id === id)
+    if (!target || !source) return null
+    const existing = remotes.get(id)
+    if (existing) return existing
+    const link = seams.link(target)
+    const r: Remote = { source, link, sampler: seams.remote(link) }
+    r.sampler.setRecording(prefs.record)
+    r.sampler.setCritAt(prefs.critAt)
+    r.sampler.onAlert((alert) => {
+      if (alert.kind === 'notify') void call('notifications.show', { title: source.label + ': ' + alert.title, body: alert.body })
+    })
+    remotes.set(id, r)
+    return r
+  }
+
+  function isLocal(input: Record<string, unknown> | null | undefined): boolean {
+    const id = input?.source
+    return id === undefined || id === null || id === '' || id === 'local'
+  }
+
+  orca.panels.handle('sources.list', async (input) => {
+    const found = await currentSources(input?.refresh === true)
+    const list = found?.sources ?? [LOCAL]
+    return {
+      sources: list.map((x) => {
+        const r = remotes.get(x.id)
+        const st = r ? r.link.state() : null
+        return { ...x, status: x.kind === 'local' ? 'connected' : st?.status ?? 'idle', error: st?.error ?? null }
+      })
+    }
+  })
+
   orca.panels.handle('prefs.sync', async (input) => {
     prefs = readPrefs(input, prefs)
     synced = true
     sampler.setRecording(prefs.record)
     sampler.setCritAt(prefs.critAt)
+    for (const r of remotes.values()) {
+      r.sampler.setRecording(prefs.record)
+      r.sampler.setCritAt(prefs.critAt)
+    }
     try {
       await orca.storage.set('prefs', prefs)
     } catch (error: unknown) {
@@ -297,16 +409,33 @@ export default function activate(orca: OrcaWorkerApi): void {
     return { ok: true, prefs }
   })
 
+  async function remoteOrFail(input: Record<string, unknown> | null | undefined): Promise<Remote> {
+    const r = await remoteFor(String(input?.source))
+    if (!r) throw Object.assign(new Error('Orca is not connected to that server'), { code: 'unavailable' })
+    return r
+  }
+
   orca.panels.handle('stats.read', async (input) => {
-    lastPanelRead = Date.now()
-    const out = await sampler.read(input ?? {})
-    badge(out.health.level, out.health.cause)
-    return out
+    if (isLocal(input)) {
+      lastPanelRead = Date.now()
+      const out = await sampler.read(input ?? {})
+      refreshBadge()
+      return out
+    }
+    const r = await remoteOrFail(input)
+    const out = await r.sampler.read(input ?? {})
+    refreshBadge()
+    return { ...out, health: readOnly(out.health), remote: true }
   })
-  orca.panels.handle('health.suspects', async () => sampler.suspects())
-  orca.panels.handle('process.quit', async (input) =>
-    sampler.quit(Number(input?.pid), String(input?.name ?? ''), input?.start ? String(input.start) : null, input?.force === true)
-  )
+  orca.panels.handle('health.suspects', async (input) => {
+    if (isLocal(input)) return sampler.suspects()
+    const out = await (await remoteOrFail(input)).sampler.suspects()
+    return { ...out, items: out.items.map((it) => ({ ...it, quittable: false })) }
+  })
+  orca.panels.handle('process.quit', async (input) => {
+    if (!isLocal(input)) return { ok: false, reason: 'Processes on a server are read-only here' }
+    return sampler.quit(Number(input?.pid), String(input?.name ?? ''), input?.start ? String(input.start) : null, input?.force === true)
+  })
 
   async function processPath(pid: number): Promise<string | null> {
     if (process.platform === 'win32' || !Number.isInteger(pid) || pid <= 0) return null
@@ -315,6 +444,7 @@ export default function activate(orca: OrcaWorkerApi): void {
   }
 
   orca.panels.handle('process.explain', async (input) => {
+    if (!isLocal(input)) return { ok: false, reason: 'What is this? works for this computer only' }
     const raw = (input ?? {}) as ExplainInput
     if (!host || !host.call) return { ok: false, reason: 'This Orca cannot send to agents' }
     const prompt = buildPrompt({ ...raw, platform: process.platform }, await processPath(Number(raw.pid)))
@@ -347,14 +477,22 @@ export default function activate(orca: OrcaWorkerApi): void {
     })
   }, TRACK_MS)
 
+  async function pulseRemotes(): Promise<void> {
+    if (!prefs.record) return
+    const found = await currentSources()
+    if (!found) return
+    for (const s of found.sources) {
+      if (s.kind !== 'ssh') continue
+      remoteFor(s.id).then((r) => r && r.sampler.pulse()).then(() => refreshBadge(), () => undefined)
+    }
+  }
+
   badge('ok', '')
   if (timer) clearInterval(timer)
   timer = setInterval(() => {
-    sampler.pulse().then(() => {
-      const h = sampler.health()
-      badge(h.level, h.cause)
-    }, () => undefined)
-  }, PULSE_MS)
+    sampler.pulse().then(() => refreshBadge(), () => undefined)
+    pulseRemotes().catch(() => undefined)
+  }, seams.pulseMs)
 }
 
 export function deactivate(): void {
@@ -363,4 +501,6 @@ export function deactivate(): void {
   if (trackTimer) clearInterval(trackTimer)
   trackTimer = null
   for (const done of [...waiting]) done(false)
+  for (const r of remotes.values()) r.link.dispose()
+  remotes.clear()
 }

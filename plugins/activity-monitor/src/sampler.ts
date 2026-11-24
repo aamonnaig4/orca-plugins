@@ -1,6 +1,6 @@
 import os from 'node:os'
 import { statfs } from 'node:fs/promises'
-import { background, nodeDeps, type Details, type Provider, type QuitResult } from './deps.ts'
+import { background, nodeDeps, type Details, type Provider, type QuitResult, type Raw } from './deps.ts'
 import type { Battery } from './details.ts'
 import { createLinux } from './linux.ts'
 import { createMac } from './mac.ts'
@@ -63,6 +63,7 @@ export type Sample = {
   split: { user: number; system: number; idle: number } | null
   counts: { procs: number | null; threads: number | null }
   battery: Battery | null
+  host: Raw['host'] | null
 }
 
 type Space = { blocks: number; bsize: number; bavail: number; bfree: number }
@@ -137,6 +138,7 @@ export function createSampler(options: SamplerOptions = {}) {
   const details = background<Details>(() => provider.details(energy), () => Math.max(provider.detailsEvery, interval * 0.9))
 
   async function take(): Promise<Sample> {
+    if (provider.refresh) await provider.refresh()
     if (!cores) {
       const [info, n] = await Promise.all([provider.info(), provider.note()])
       cores = coreLayout(cpus().length, info.performance, info.efficiency)
@@ -145,6 +147,7 @@ export function createSampler(options: SamplerOptions = {}) {
     if (!previous) {
       previous = { at: Date.now(), cpus: cpus(), net: null, disk: null }
       await wait(settle)
+      if (provider.refresh) await provider.refresh()
     }
     const at = Date.now()
     const now = cpus()
@@ -196,7 +199,7 @@ export function createSampler(options: SamplerOptions = {}) {
     seq += 1
     const sample: Sample = {
       seq, at, cores, loads, total, memory: raw.memory, swap: raw.swap, swapTotal: raw.swapTotal ?? null, pressure: raw.pressure, net, disk, gpu: raw.gpu, note,
-      split, counts: { procs: null, threads: null }, battery: raw.battery ?? null
+      split, counts: { procs: null, threads: null }, battery: raw.battery ?? null, host: raw.host ?? null
     }
     if (recording || clock() - lastRead < READ_RECENT_MS) history.push({
       seq,

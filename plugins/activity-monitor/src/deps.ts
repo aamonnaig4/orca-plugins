@@ -24,6 +24,7 @@ export type Raw = {
   packets?: Pair | null
   ops?: Pair | null
   battery?: Battery | null
+  host?: { name: string; load: number[] | null; cpuLimit: number | null; memLimit: number | null; memUsed: number | null } | null
 }
 
 export type Details = { rows: Map<number, Extra>; procs: number | null; threads: number | null }
@@ -47,6 +48,7 @@ export type Provider = {
   quit(pid: number, force: boolean): Promise<QuitResult>
   cwds(pids: number[]): Promise<Map<number, string | null>>
   args(pids: number[]): Promise<Map<number, string>>
+  refresh?(): Promise<void>
 }
 
 const ENV = { ...process.env, LC_ALL: 'C', LANG: 'C' }

@@ -360,3 +360,107 @@ test('the worker loads stored prefs when it starts', async () => {
   assert.equal(worker.host.callsOf('agent.launch')[0].agent, 'grok')
   await worker.deactivate()
 })
+
+function remoteSeams({ level = 'ok' } = {}) {
+  fakeSystem([])
+  const links = []
+  const reads = []
+  const pulses = []
+  const recording = []
+  main.seams.discover = async () => ({
+    sources: [{ id: 'local', label: 'Mac', kind: 'local', connected: true, server: false }, { id: 'ssh:a', label: 'dev', kind: 'ssh', connected: true, server: true }],
+    targets: new Map([['ssh:a', { id: 'a', label: 'dev', configHost: 'dev' }]])
+  })
+  main.seams.link = (target) => {
+    const link = { target, disposed: false, state: () => ({ status: 'connected', error: null }), dispose() { link.disposed = true } }
+    links.push(link)
+    return link
+  }
+  main.seams.remote = () => ({
+    read: async (input) => { reads.push(input); return { boot: 'b', sample: { seq: 1 }, health: { level, cause: 'Memory is full', culprit: { quittable: true } }, procs: null, history: [] } },
+    suspects: async () => ({ by: 'mem', items: [{ pid: 1, quittable: true }] }),
+    health: () => ({ level, cause: 'Memory is full' }),
+    pulse: async () => { pulses.push(Date.now()) },
+    setRecording(on) { recording.push(on) },
+    setCritAt() {},
+    onAlert() {}
+  })
+  return { links, reads, pulses, recording }
+}
+
+test('servers keep recording history while the panel is closed', async () => {
+  const { links, pulses } = remoteSeams()
+  const before = main.seams.pulseMs
+  main.seams.pulseMs = 20
+  try {
+    const worker = await mountWorker(main)
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    assert.equal(links.length, 1)
+    assert.ok(pulses.length >= 2)
+    await worker.deactivate()
+  } finally {
+    main.seams.pulseMs = before
+  }
+})
+
+test('servers stop sampling in the background when recording is off', async () => {
+  const { links, pulses, recording } = remoteSeams()
+  const before = main.seams.pulseMs
+  main.seams.pulseMs = 20
+  try {
+    const worker = await mountWorker(main)
+    await worker.request('prefs.sync', { record: false })
+    await worker.request('stats.read', { source: 'ssh:a' })
+    const seen = pulses.length
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    assert.equal(links.length, 1)
+    assert.equal(pulses.length, seen)
+    assert.equal(recording.at(-1), false)
+    await worker.deactivate()
+  } finally {
+    main.seams.pulseMs = before
+  }
+})
+
+test('sources.list returns this computer and the servers Orca is connected to', async () => {
+  remoteSeams()
+  const worker = await mountWorker(main)
+  const out = await worker.request('sources.list')
+  assert.deepEqual(out.sources.map((s) => [s.id, s.status]), [['local', 'connected'], ['ssh:a', 'idle']])
+  await worker.deactivate()
+})
+
+test('stats.read with a server source reads that server, once connected, and never offers Quit', async () => {
+  const { links, reads } = remoteSeams()
+  const worker = await mountWorker(main)
+  const out = await worker.request('stats.read', { source: 'ssh:a', procs: true })
+  assert.equal(out.remote, true)
+  assert.equal(out.health.culprit.quittable, false)
+  await worker.request('stats.read', { source: 'ssh:a' })
+  assert.equal(links.length, 1)
+  assert.equal(links[0].target.configHost, 'dev')
+  assert.equal(reads.length, 2)
+  const sus = await worker.request('health.suspects', { source: 'ssh:a' })
+  assert.equal(sus.items[0].quittable, false)
+  assert.deepEqual(await worker.request('process.quit', { source: 'ssh:a', pid: 1, name: 'x' }), { ok: false, reason: 'Processes on a server are read-only here' })
+  await worker.deactivate()
+  assert.equal(links[0].disposed, true)
+})
+
+test('stats.read for a server Orca is not connected to fails without opening a link', async () => {
+  const { links } = remoteSeams()
+  const worker = await mountWorker(main)
+  await assert.rejects(worker.request('stats.read', { source: 'ssh:zzz' }), /not connected/)
+  assert.equal(links.length, 0)
+  await worker.deactivate()
+})
+
+test('a critical server shows the status bar badge with its name', async () => {
+  remoteSeams({ level: 'crit' })
+  const worker = await mountWorker(main)
+  await worker.request('stats.read', { source: 'ssh:a' })
+  const last = worker.host.callsOf('statusBar.update').at(-1)
+  assert.equal(last.visible, true)
+  assert.equal(last.tooltip, 'dev: Memory is full')
+  await worker.deactivate()
+})

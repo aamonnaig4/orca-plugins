@@ -10,6 +10,16 @@ A live system monitor in Orca's right sidebar: CPU cores, memory, network, disk,
 - **What is this?** (right-click a process) sends a question about that process to one of your running agents, so it can explain what the process is.
 - **Settings** (the gear) groups everything below. **Reset to defaults** puts them all back.
 
+## Servers
+
+Above the tabs, pick where the numbers come from: this computer, or any server Orca is connected to over SSH (the hosts `orca host list` shows as connected; a server running a paired Orca is marked **Orca server**). Every tab then shows that source. **Compare** puts all sources side by side: CPU with load average, memory, network and disk, plus the per-user CPU and memory limit when the server sets one (cgroup v2). Click a card to open that source.
+
+- No setup and nothing installed on the server. The worker opens one `ssh` connection per server, with the same alias, host, port, user and key path Orca saved for that target (read from Orca's profile data; nothing secret is read), and keeps it open. With **Record in background** on (the default), the worker samples every connected server every 3 seconds even while the panel is closed, the same as this computer, so the long history is already there when you open it; with it off, a server is sampled only while you look and the connection closes after a minute without reads. Key passphrases are not asked for: the key must work without a prompt (an agent or an unencrypted key), as `ssh -o BatchMode=yes` would.
+- Linux servers only, since the numbers come from `/proc`. Another system is refused with a message saying so.
+- Each read is one round trip that returns `/proc` counters; the process list is fetched only while a process view is open.
+- Server processes are read-only: there is no Quit, cleanup or **What is this?** for them.
+- Health and the status bar badge cover every source: the badge names the server when it is the one in trouble.
+
 ## Lock-up warnings
 
 The strip at the bottom of the panel shows one word on a five-step scale, with a pip per step: **Idle · Healthy · Busy · Strained · Critical**. Click it (or press Enter on it) to open a drawer that grows up from the footer with the cause and the five most likely culprits: by memory, or by CPU when Busy. Each has a **Quit** button; if an app ignores it for 3 seconds, the button becomes **Force quit**. Apps are grouped with their helper processes. Processes that share a name, like many `node`, are listed one by one so each Quit hits exactly one process. Orca and system processes are listed without a button.

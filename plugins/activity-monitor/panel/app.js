@@ -16,7 +16,7 @@
   var QUIT_GRACE = 8000
   var NAMES = { all: 'All', cpu: 'CPU', mem: 'Memory', net: 'Network', disk: 'Disk', gpu: 'GPU', energy: 'Energy', procs: 'Processes' }
   var ICONS = { all: 'grid', cpu: 'cpu', mem: 'mem', net: 'net', disk: 'disk', gpu: 'gpu', energy: 'bolt', procs: 'proc' }
-  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'crit', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'resetprefs']
+  var FOCUS_KEYS = ['tile', 'tab', 'hero', 'hquit', 'loadmore', 'htoastx', 'sort', 'colmenu', 'togglecol', 'resetcols', 'quitsel', 'quit', 'force', 'copy', 'copyname', 'explain', 'no', 'gear', 'pause', 'step', 'crit', 'cleanup', 'cutoastx', 'setgraph', 'setline', 'setcolor', 'setgrid', 'sethist', 'setclock', 'setrecord', 'setfocus', 'setagent', 'setstrip', 'setalert', 'setsort', 'setpulse', 'setopen', 'setrows', 'settext', 'resetprefs', 'source', 'compare']
 
   var DEFAULTS = { graph: 'smooth', line: 'fill', color: 'heat', grid: true, rate: 1000, hist: 60, clock: false, record: true, strip: true, alert: true, critAt: 95, sort: 'cpu', pulse: true, open: 'last', rows: 'default', text: 'default', focus: true, agent: 'claude' }
   var CRIT_MIN = 70
@@ -30,7 +30,7 @@
   var OPENS = ['last', 'all', 'procs']
   var DENSITIES = ['compact', 'default', 'comfortable']
   var TEXT_SCALE = { small: 0.9, default: 1, large: 1.15 }
-  var prefs = Object.assign({ tab: 'all', hero: 'cpu' }, DEFAULTS)
+  var prefs = Object.assign({ tab: 'all', hero: 'cpu', source: 'local', compare: false }, DEFAULTS)
   var HEROES = ['cpu', 'mem', 'net', 'disk', 'gpu', 'energy']
   var HINT_MS = 5000
   var TAB_TIP_MS = 350
@@ -51,12 +51,27 @@
   if (!TEXT_SCALE[prefs.text]) prefs.text = DEFAULTS.text
   function ts() { return TEXT_SCALE[prefs.text] }
   if (prefs.open !== 'last') prefs.tab = prefs.open
+  if (typeof prefs.source !== 'string' || !prefs.source) prefs.source = 'local'
+  prefs.compare = prefs.compare === true
 
-  var data = { boot: null, sample: null, health: null, procs: null, seq: 0, at: 0, windowed: false, tot: [], mem: [], down: [], up: [], gpu: [], dr: [], dw: [], bat: [], core: [], norms: {} }
+  function newStore() { return { boot: null, sample: null, health: null, procs: null, seq: 0, at: 0, windowed: false, tot: [], mem: [], down: [], up: [], gpu: [], dr: [], dw: [], bat: [], core: [], norms: {}, seen: {} } }
+  var stores = {}
+  function storeFor(id) { if (!stores[id]) stores[id] = newStore(); return stores[id] }
+  function withStore(store, fn) {
+    var keep = data
+    data = store
+    try { return fn() } finally { data = keep === store ? store : storeFor(prefs.source) }
+  }
+  var data = storeFor(prefs.source)
+  var SOURCES_MS = 15000
+  var srcs = { list: [{ id: 'local', label: 'This computer', kind: 'local', status: 'connected', server: false }], errors: {}, loaded: false }
+  function isRemote() { return prefs.source !== 'local' }
+  function sourceOf(id) { return srcs.list.filter(function (x) { return x.id === id })[0] || null }
+  function sourceLabel(id) { var x = sourceOf(id); return x ? x.label : id.replace(/^ssh:/, '') }
   var view = {
     paused: false, settings: false, sort: prefs.sort, query: '', ask: null, askMsg: '', stuck: false, gone: {}, error: '', busy: false,
     menu: null, colMenu: null, heroMenu: null, open: null, unselect: null, copied: null, holding: false, sel: null, drag: null, dragged: false, fitted: [],
-    glyph: 7.8, seen: {}, rows: 150, toastSeen: 0, cleanup: { kind: 'rest', n: null, count: 0 }, cleanupStarting: false, cleanupErr: '', cleanupErrAt: 0, hmsg: '', hmsgAt: 0, pointer: false, composing: false, hoverList: false, order: null, pending: false, dirty: true
+    glyph: 7.8, rows: 150, toastSeen: 0, cleanup: { kind: 'rest', n: null, count: 0 }, cleanupStarting: false, cleanupErr: '', cleanupErrAt: 0, hmsg: '', hmsgAt: 0, pointer: false, composing: false, hoverList: false, order: null, pending: false, dirty: true
   }
   var palette = { primary: '#e6e6e6', secondary: '#a3a3a3', grid: '#1f1f1f', bg: '#000000' }
 
@@ -174,7 +189,7 @@
     data.sample = r.sample
     data.health = r.health || null
     data.norms = {}
-    ;['net', 'disk', 'gpu'].forEach(function (k) { if (r.sample[k]) view.seen[k] = true })
+    ;['net', 'disk', 'gpu'].forEach(function (k) { if (r.sample[k]) data.seen[k] = true })
     if (r.procs) {
       trackMoves(data.procs, r.procs)
       data.procs = r.procs
@@ -230,16 +245,44 @@
   function wantsEnergy() { return prefs.tab === 'energy' || (wantsProcs() && view.fitted.indexOf('power') >= 0) || view.open !== null }
   function wantsDetails() { return prefs.tab === 'cpu' || prefs.tab === 'procs' || prefs.tab === 'energy' || view.open !== null }
 
-  function poll() {
-    if (view.paused || view.busy || document.hidden || !api || !api.plugin) return
+  function errText(e, id) {
+    var msg = (e && (e.message || e.code)) || 'Could not read system stats'
+    return id === 'local' ? msg : sourceLabel(id) + ': ' + msg
+  }
+
+  function compareList() {
+    return srcs.list.filter(function (x) { return x.kind === 'local' || x.connected !== false })
+  }
+
+  function pollCompare() {
     view.busy = true
     var spanSec = prefs.hist
-    api.plugin.request('stats.read', { procs: wantsProcs(), details: wantsDetails(), energy: wantsEnergy(), since: data.seq, interval: prefs.rate, span: spanSec, boot: data.boot }, { timeoutMs: 15000 }).then(function (r) {
-      ingest(r, spanSec)
-      data.at = performance.now()
-      view.error = ''
+    Promise.all(compareList().map(function (src) {
+      var store = storeFor(src.id)
+      return api.plugin.request('stats.read', { source: src.id, procs: false, details: false, energy: false, since: store.seq, interval: prefs.rate, span: spanSec, boot: store.boot }, { timeoutMs: 15000 }).then(function (r) {
+        withStore(store, function () { ingest(r, spanSec); data.at = performance.now() })
+        srcs.errors[src.id] = ''
+      }, function (e) {
+        srcs.errors[src.id] = errText(e, 'local')
+      })
+    })).then(function () {
+      view.busy = false
+      render()
+    })
+  }
+
+  function poll() {
+    if (view.paused || view.busy || document.hidden || !api || !api.plugin) return
+    if (prefs.compare) { pollCompare(); return }
+    view.busy = true
+    var spanSec = prefs.hist
+    var id = prefs.source
+    var store = data
+    api.plugin.request('stats.read', { source: id, procs: wantsProcs(), details: wantsDetails(), energy: wantsEnergy(), since: store.seq, interval: prefs.rate, span: spanSec, boot: store.boot }, { timeoutMs: 15000 }).then(function (r) {
+      withStore(store, function () { ingest(r, spanSec); data.at = performance.now() })
+      if (id === prefs.source) view.error = ''
     }, function (e) {
-      view.error = (e && (e.message || e.code)) || 'Could not read system stats'
+      if (id === prefs.source) view.error = errText(e, id)
     }).then(function () {
       view.busy = false
       render()
@@ -518,13 +561,13 @@
       ['mem', Fmt.gib(s.memory.used) + ' / ' + Math.round(s.memory.total / 1073741824) + ' GB', function () { return memBody(layout) }]
     ]
     if (s.net) list.push(['net', '↓ ' + Fmt.rate(s.net.down) + '  ↑ ' + Fmt.rate(s.net.up), function () { return netBody(layout) }])
-    else if (view.seen.net) list.push(['net', '–', missing])
+    else if (data.seen.net) list.push(['net', '–', missing])
     if (s.disk) list.push(['disk', Fmt.diskSize(s.disk.used) + ' / ' + Fmt.diskSize(s.disk.total), function () { return diskBody(layout) }])
-    else if (view.seen.disk) list.push(['disk', '–', missing])
+    else if (data.seen.disk) list.push(['disk', '–', missing])
     if (s.gpu) list.push(['gpu', Fmt.pct(s.gpu.utilization), function () { return gpuBody(layout) }])
-    else if (view.seen.gpu) list.push(['gpu', '–', missing])
+    else if (data.seen.gpu) list.push(['gpu', '–', missing])
     var b = s.battery
-    list.push(['energy', b ? b.percent + '% · ' + esc(batteryStatus(b)) : '', function () { return energyBody(layout) }])
+    if (!isRemote() || b) list.push(['energy', b ? b.percent + '% · ' + esc(batteryStatus(b)) : '', function () { return energyBody(layout) }])
     list.push(['procs', data.procs ? data.procs.length + ' running' : '', function () { return procBody(layout) }])
     return list
   }
@@ -984,6 +1027,83 @@
     if (el) el.focus({ preventScroll: true })
   }
 
+  function loadSources(refresh) {
+    if (!api || !api.plugin) return
+    api.plugin.request('sources.list', { refresh: !!refresh }, { timeoutMs: 20000 }).then(function (r) {
+      if (!r || !Array.isArray(r.sources) || !r.sources.length) return
+      srcs.list = r.sources
+      srcs.loaded = true
+      render()
+    }, function () {})
+  }
+
+  function selectSource(id) {
+    popClose()
+    prefs.source = id
+    prefs.compare = false
+    data = storeFor(id)
+    view.sel = null
+    view.open = null
+    view.menu = null
+    view.error = ''
+    savePrefs()
+    render()
+    poll()
+  }
+
+  function sourceBar() {
+    if (srcs.list.length < 2 && !isRemote()) return ''
+    var known = srcs.list.slice()
+    if (!sourceOf(prefs.source)) known.push({ id: prefs.source, label: sourceLabel(prefs.source), kind: 'ssh', status: 'error', connected: false })
+    return '<div class="srcbar" role="tablist" aria-label="Source">' + known.map(function (x) {
+      var on = !prefs.compare && x.id === prefs.source
+      var mine = stores[x.id]
+      var live = mine && mine.sample && performance.now() - mine.at < Math.max(5000, prefs.rate * 3)
+      var failed = (x.id === prefs.source && view.error) || srcs.errors[x.id]
+      var st = x.kind === 'local' ? 'connected' : x.connected === false || failed ? 'error' : live ? 'connected' : x.status || 'idle'
+      var tip = x.kind === 'local' ? 'This computer' : (x.server ? 'Orca server' : 'SSH host') + ' · ' + (x.error || st)
+      return '<a data-source="' + esc(x.id) + '" role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" title="' + esc(tip) + '" tabindex="0">' +
+        (x.kind === 'local' ? '' : '<i class="sd ' + esc(st) + '"></i>') + '<span>' + esc(x.label) + '</span></a>'
+    }).join('') + (srcs.list.length > 1 ? '<a data-compare="t" role="tab" aria-selected="' + prefs.compare + '" class="cmpb' + (prefs.compare ? ' on' : '') + '" title="All sources side by side" tabindex="0">' + icon('grid') + '<span>Compare</span></a>' : '') + '</div>'
+  }
+
+  function cmpPlot(id, src, kind) {
+    if (prefs.graph === 'braille') return '<div class="brfill" data-store="' + esc(id) + '" data-src="' + src + '" data-kind="' + kind + '"></div>'
+    return '<canvas data-store="' + esc(id) + '" data-src="' + src + '" data-kind="' + kind + '" data-n="40" data-xl="0"></canvas>'
+  }
+
+  function compareCard(src) {
+    var st = storeFor(src.id)
+    var s = st.sample
+    var h = st.health
+    var err = srcs.errors[src.id]
+    var step = h && typeof h.step === 'number' ? h.step : 1
+    var word = h ? '<b class="cw" style="color:' + stepColors()[step] + '">' + esc(h.word) + '</b>' : ''
+    var sub = src.kind === 'local' ? 'this computer' : (src.server ? 'Orca server' : 'SSH') + (s && s.host && s.host.name && s.host.name !== src.label ? ' · ' + esc(s.host.name) : '')
+    var head = '<div class="ch"><b>' + esc(src.label) + '</b><span class="mut">' + sub + '</span>' + word + '</div>'
+    if (!s) return '<a class="cmp" data-source="' + esc(src.id) + '" tabindex="0">' + head + '<div class="tnote mut">' + esc(err || 'Connecting…') + '</div></a>'
+    var memPct = s.memory.total ? (s.memory.used / s.memory.total) * 100 : 0
+    var cpuMore = []
+    if (s.host && s.host.load) cpuMore.push('load ' + s.host.load.map(function (v) { return v.toFixed(2) }).join(' '))
+    cpuMore.push(s.cores.length + ' cores')
+    if (s.host && s.host.cpuLimit) cpuMore.push('your limit ' + Fmt.fixed(s.host.cpuLimit, s.host.cpuLimit % 1 ? 1 : 0) + ' CPU')
+    var memMore = [Fmt.memSize(s.memory.used) + ' of ' + Fmt.memSize(s.memory.total)]
+    if (s.host && s.host.memUsed !== null && s.host.memUsed !== undefined) memMore.push('you ' + Fmt.memSize(s.host.memUsed) + (s.host.memLimit ? ' of ' + Fmt.memSize(s.host.memLimit) : ''))
+    if (s.swap) memMore.push('swap ' + Fmt.memSize(s.swap))
+    var rows = '<div class="cr"><span class="ck">CPU</span><b class="num">' + Fmt.pct(s.total) + '</b><span class="mut">' + esc(cpuMore.join(' · ')) + '</span></div>' +
+      '<div class="cg">' + cmpPlot(src.id, 'tot', 'cpu') + '</div>' +
+      '<div class="cr"><span class="ck">Memory</span><b class="num">' + Fmt.pct(memPct) + '</b><span class="mut">' + esc(memMore.join(' · ')) + '</span></div>' +
+      '<div class="cg">' + cmpPlot(src.id, 'mem', 'mem') + '</div>'
+    if (s.net) rows += '<div class="cr"><span class="ck">Network</span><span class="mut">↓ ' + esc(Fmt.rate(s.net.down || 0)) + ' · ↑ ' + esc(Fmt.rate(s.net.up || 0)) + '</span></div>'
+    if (s.disk && s.disk.total) rows += '<div class="cr"><span class="ck">Disk</span><b class="num">' + Fmt.pct((s.disk.used / s.disk.total) * 100) + '</b><span class="mut">' + esc(Fmt.diskSize(s.disk.free) + ' free of ' + Fmt.diskSize(s.disk.total)) + '</span></div>'
+    if (err) rows += '<div class="tnote mut">' + esc(err) + '</div>'
+    return '<a class="cmp" data-source="' + esc(src.id) + '" tabindex="0" title="Open ' + esc(src.label) + '">' + head + rows + '</a>'
+  }
+
+  function compareView() {
+    return '<div class="cmpv">' + compareList().map(compareCard).join('') + '</div>'
+  }
+
   function render() {
     if (view.pointer || view.composing || view.holding) { view.pending = true; return }
     view.pending = false
@@ -994,12 +1114,17 @@
     if (view.settings) {
       top = '<div class="top"><b class="stitle">Settings</b><a class="ib on" data-gear title="Close settings" aria-label="Close settings" tabindex="0">' + icon('x') + '</a></div>'
       body = settingsView()
+    } else if (prefs.compare) {
+      top = '<div class="top"><b class="stitle">Compare</b>' + stepper() + '<a class="ib" data-pause title="' + (view.paused ? 'Resume' : 'Pause') + '" tabindex="0">' + icon(view.paused ? 'play' : 'pause') +
+        '</a><a class="ib" data-gear title="Settings" tabindex="0">' + icon('gear') + '</a></div>'
+      body = compareView()
+      layout.page = false
     } else {
       var lv = data.health && data.sample ? data.health.level : 'ok'
-      top = (healthToast() || cleanupToast()) + '<div class="top lv-' + lv + '">' + healthStrip() + stepper() + cleanupButton() + '<a class="ib" data-pause title="' + (view.paused ? 'Resume' : 'Pause') + '" tabindex="0">' + icon(view.paused ? 'play' : 'pause') +
+      top = (healthToast() || (isRemote() ? '' : cleanupToast())) + '<div class="top lv-' + lv + '">' + healthStrip() + stepper() + (isRemote() ? '' : cleanupButton()) + '<a class="ib" data-pause title="' + (view.paused ? 'Resume' : 'Pause') + '" tabindex="0">' + icon(view.paused ? 'play' : 'pause') +
         '</a><a class="ib" data-gear title="Settings" tabindex="0">' + icon('gear') + '</a></div>'
       if (!data.sample) {
-        body = '<div class="note">' + esc(view.error || (api ? 'Reading your system…' : 'Open this panel in Orca.')) + '</div>'
+        body = '<div class="note">' + esc(view.error || (api ? (isRemote() ? 'Connecting to ' + sourceLabel(prefs.source) + '…' : 'Reading your system…') : 'Open this panel in Orca.')) + '</div>'
       } else {
         var list = sections(layout)
         var keys = ['all', 'procs'].concat(list.map(function (s) { return s[0] }).filter(function (k) { return k !== 'procs' }))
@@ -1021,12 +1146,13 @@
     var prevWidths = Array.prototype.map.call(root.querySelectorAll('[data-w]'), function (x) { return x.dataset.w })
     var focus = focusKey()
     root.classList.toggle('paused', view.paused)
+    root.classList.toggle('remote', isRemote() && !prefs.compare)
     root.classList.toggle('themed', prefs.color === 'theme')
     root.dataset.rows = prefs.rows
     root.classList.toggle('pixel', prefs.graph === 'braille')
     document.body.style.setProperty('--ts', ts())
-    var menu = view.settings || !data.sample ? '' : view.heroMenu ? heroMenuView() : view.colMenu ? colMenuView() : menuView()
-    root.innerHTML = tabs + '<div class="pbody' + (layout.page ? ' page' : '') + (layout.all ? ' allp' : '') + '">' + body + '</div>' + top + menu
+    var menu = view.settings || prefs.compare || !data.sample ? '' : view.heroMenu ? heroMenuView() : view.colMenu ? colMenuView() : menuView()
+    root.innerHTML = (view.settings ? '' : sourceBar()) + tabs + '<div class="pbody' + (layout.page ? ' page' : '') + (layout.all ? ' allp' : '') + '">' + body + '</div>' + top + menu
     placeMenu()
     fitFooter()
     root.querySelector('.pbody').scrollTop = scrollTop
@@ -1044,7 +1170,9 @@
       var rows = Math.max(1, Math.floor(cell.clientHeight / 13))
       var cols = Math.max(4, Math.floor(cell.clientWidth / view.glyph))
       var kind = cell.dataset.kind
-      cell.innerHTML = Graph.braille(series(cell.dataset.src), cols, rows, function (f) { return tone(kind, f) })
+      var paint = function () { cell.innerHTML = Graph.braille(series(cell.dataset.src), cols, rows, function (f) { return tone(kind, f) }) }
+      if (cell.dataset.store) withStore(storeFor(cell.dataset.store), paint)
+      else paint()
     })
     view.dirty = true
     drawAll(view.paused ? 1 : (performance.now() - data.at) / prefs.rate)
@@ -1104,6 +1232,15 @@
   function drawAll(progress) {
     syncBg()
     root.querySelectorAll('canvas[data-src]').forEach(function (cv) {
+      if (cv.dataset.store) {
+        var st = storeFor(cv.dataset.store)
+        withStore(st, function () { drawOne(cv, view.paused ? 1 : (performance.now() - st.at) / prefs.rate) })
+      } else drawOne(cv, progress)
+    })
+  }
+
+  function drawOne(cv, progress) {
+    {
       var kind = cv.dataset.kind
       var spark = cv.dataset.xl === '0'
       var live = kind === 'bat' || !data.windowed
@@ -1123,7 +1260,7 @@
         rule: palette.grid,
         ts: ts()
       })
-    })
+    }
   }
 
   function frame() {
@@ -1312,6 +1449,15 @@
   function act(a) {
     var d = a.dataset
     if (d.force) return
+    if (d.source !== undefined) { selectSource(d.source); return }
+    if ('compare' in d) {
+      popClose()
+      prefs.compare = !prefs.compare
+      savePrefs()
+      render()
+      poll()
+      return
+    }
     if (d.step) { setRate(prefs.rate + Number(d.step) * RATE_STEP); return }
     if (d.crit) { setCrit(prefs.critAt + Number(d.crit)); return }
     if ('hquit' in d) { quitCulprit(); return }
@@ -1640,6 +1786,8 @@
   requestAnimationFrame(frame)
   render()
   syncPrefs()
+  loadSources(false)
+  setInterval(function () { if (!document.hidden) loadSources(false) }, SOURCES_MS)
   schedule()
   cleanupRead()
 })()
