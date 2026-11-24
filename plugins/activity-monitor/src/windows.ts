@@ -1,25 +1,77 @@
 import path from 'node:path'
-import { cpuPercents, parseWindowsNetstat, parseWindowsProcs, type Proc } from './parse.ts'
+import { cpuPercents, parseNvidiaSmi, parseWindowsNetstat, parseWindowsProcs, type Proc } from './parse.ts'
 import { background, osMemory, type Deps, type Provider } from './deps.ts'
 import { parseCimProcs, parseWindowsBattery, parseWindowsPackets } from './details.ts'
 
 const SELECT = "Select-Object Id,ProcessName,CPU,WorkingSet64,@{n='Start';e={if ($_.StartTime) { $_.StartTime.Ticks }}},@{n='Threads';e={$_.Threads.Count}} | ConvertTo-Csv -NoTypeInformation"
 const CIM = 'Get-CimInstance Win32_Process | Select-Object ProcessId,ThreadCount,ReadTransferCount,WriteTransferCount | ConvertTo-Csv -NoTypeInformation'
 const BATTERY = 'Get-CimInstance Win32_Battery | Select-Object EstimatedChargeRemaining,BatteryStatus | ConvertTo-Csv -NoTypeInformation'
+const SMI = ['--query-gpu=utilization.gpu,name', '--format=csv,noheader,nounits']
+
+function envValue(env: Record<string, string | undefined>, name: string): string | undefined {
+  const direct = env[name]
+  if (direct) return direct
+  const lower = name.toLowerCase()
+  for (const [key, value] of Object.entries(env)) {
+    if (key.toLowerCase() === lower && value) return value
+  }
+  return undefined
+}
 
 export function powershellPath(env: Record<string, string | undefined>): string {
-  return env.SystemRoot ? path.win32.join(env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : 'powershell.exe'
+  const root = envValue(env, 'SystemRoot')
+  return root ? path.win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : 'powershell.exe'
+}
+
+export function nvidiaSmiPaths(env: Record<string, string | undefined>): string[] {
+  const out = ['nvidia-smi']
+  const root = envValue(env, 'SystemRoot')
+  if (root) out.push(path.win32.join(root, 'System32', 'nvidia-smi.exe'))
+  const programFiles = envValue(env, 'ProgramFiles') || envValue(env, 'ProgramW6432')
+  if (programFiles) out.push(path.win32.join(programFiles, 'NVIDIA Corporation', 'NVSMI', 'nvidia-smi.exe'))
+  else {
+    const drive = envValue(env, 'SystemDrive')
+    if (drive) out.push(path.win32.join(drive + '\\', 'Program Files', 'NVIDIA Corporation', 'NVSMI', 'nvidia-smi.exe'))
+  }
+  return out
 }
 
 export function createWindows(d: Deps, env: Record<string, string | undefined> = process.env): Provider {
-  const drive = env.SystemDrive || 'C:'
+  const drive = envValue(env, 'SystemDrive') || 'C:'
   const shell = powershellPath(env)
+  const smiPaths = nvidiaSmiPaths(env)
+  const hasProgramFiles = Boolean(envValue(env, 'ProgramFiles'))
+  const programFiles = envValue(env, 'ProgramFiles') || envValue(env, 'ProgramW6432') || path.win32.join(drive + '\\', 'Program Files')
+  const smiOptions = hasProgramFiles ? undefined : { env: { ProgramFiles: programFiles } }
   let previous = new Map<number, number | null>()
   let previousAt = 0
+  let gpuMode: 'nvidia' | 'none' | null = null
+  let smiCommand: string | null = null
 
   function powershell(script: string) {
     return d.run(shell, ['-NoProfile', '-NonInteractive', '-Command', "$ErrorActionPreference='SilentlyContinue'; " + script])
   }
+
+  async function readGpu() {
+    if (gpuMode === null) {
+      for (const candidate of smiPaths) {
+        const smi = parseNvidiaSmi((await d.run(candidate, SMI, smiOptions)) ?? '')
+        if (smi) {
+          gpuMode = 'nvidia'
+          smiCommand = candidate
+          return smi
+        }
+      }
+      gpuMode = 'none'
+      return null
+    }
+    if (gpuMode === 'nvidia' && smiCommand) {
+      return parseNvidiaSmi((await d.run(smiCommand, SMI, smiOptions)) ?? '')
+    }
+    return null
+  }
+
+  const gpu = background(readGpu, () => 3000)
   const battery = background(async () => parseWindowsBattery((await powershell(BATTERY)) ?? ''), () => 30000)
 
   return {
@@ -44,7 +96,7 @@ export function createWindows(d: Deps, env: Record<string, string | undefined> =
         pressure: null,
         net: counters ? { ...counters, iface: null, name: null } : null,
         disk: null,
-        gpu: null,
+        gpu: gpu.peek(),
         packets: parseWindowsPackets(netstat),
         ops: null,
         battery: battery.peek()
