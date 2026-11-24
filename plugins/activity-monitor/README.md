@@ -73,7 +73,7 @@ It makes no network connections and keeps its settings only in your copy of Orca
 | Memory | app, wired, compressed, cached, swap, pressure | used, cached, swap, pressure | used |
 | Network | default interface | default interface | all interfaces |
 | Disk | space and read/write | space and read/write | space |
-| GPU | Apple GPU | NVIDIA (`nvidia-smi`) or AMD | not shown |
+| GPU | Apple GPU | NVIDIA (`nvidia-smi`) or AMD | NVIDIA (`nvidia-smi`) |
 | Processes | yes | yes | yes, through PowerShell |
 | Energy and battery | energy impact, sleep blockers, battery | battery | battery |
 | Packets and disk operations | yes | yes | packets only |

@@ -4,7 +4,7 @@ import os from 'node:os'
 import type { Memory, Proc } from './parse.ts'
 import type { Battery, Extra, Pair } from './details.ts'
 
-export type RunOptions = { anyExit?: boolean }
+export type RunOptions = { anyExit?: boolean; env?: Record<string, string> }
 
 export type Deps = {
   run(command: string, args: string[], options?: RunOptions): Promise<string | null>
@@ -54,7 +54,8 @@ const ENV = { ...process.env, LC_ALL: 'C', LANG: 'C' }
 export const nodeDeps: Deps = {
   run(command, args, options) {
     return new Promise((resolve) => {
-      execFile(command, args, { timeout: 8000, maxBuffer: 16 * 1024 * 1024, windowsHide: true, env: ENV }, (error, out) => {
+      const env = options?.env ? { ...ENV, ...options.env } : ENV
+      execFile(command, args, { timeout: 8000, maxBuffer: 16 * 1024 * 1024, windowsHide: true, env }, (error, out) => {
         if (!error) return resolve(String(out))
         const exited = typeof (error as { code?: unknown }).code === 'number' && !error.killed
         resolve(options?.anyExit && exited ? String(out) : null)
